@@ -3,7 +3,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from app.content_loader import load_content
-from app.keyboards import main_keyboard, back_keyboard
+from app.keyboards import main_keyboard
 
 
 async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -13,7 +13,7 @@ async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         text=f"<b>{section['title']}</b>\n\n{section['text']}",
         parse_mode=ParseMode.HTML,
-        reply_markup=back_keyboard()
+        reply_markup=main_keyboard()
     )
 
 
@@ -24,7 +24,7 @@ async def show_formats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         text=f"<b>{section['title']}</b>\n\n{section['text']}",
         parse_mode=ParseMode.HTML,
-        reply_markup=back_keyboard()
+        reply_markup=main_keyboard()
     )
 
 
@@ -35,7 +35,7 @@ async def show_parents(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         text=f"<b>{section['title']}</b>\n\n{section['text']}",
         parse_mode=ParseMode.HTML,
-        reply_markup=back_keyboard()
+        reply_markup=main_keyboard()
     )
 
 
