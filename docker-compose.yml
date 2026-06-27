@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  teacherbot:
+    build: .
+    container_name: teacherbot
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./data:/app/data
+      - ./media:/app/media
+      - ./logs:/app/logs
+
+    ports:
+      - "5000:5000"
+
+    command: python app/bot.py
