@@ -4,6 +4,7 @@ from app.config import BOT_TOKEN
 from app.database import init_db
 from app.handlers.start import start
 from app.handlers.pages import show_about, show_formats, show_parents, show_main_menu
+from app.handlers.trial import get_trial_handler
 from app.content_loader import load_content
 
 
@@ -15,8 +16,11 @@ def main():
         return
 
     data = load_content()
+    trial_button = data["trial"]["button"]
 
     app = Application.builder().token(BOT_TOKEN).build()
+
+    app.add_handler(get_trial_handler(trial_button))
 
     app.add_handler(CommandHandler("start", start))
 
