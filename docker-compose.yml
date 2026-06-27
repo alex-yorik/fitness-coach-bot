@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3.3"
 
 services:
   teacherbot:
@@ -13,8 +13,6 @@ services:
       - ./data:/app/data
       - ./media:/app/media
       - ./logs:/app/logs
+      - ./content:/app/content
 
-    ports:
-      - "5000:5000"
-
-    command: python app/bot.py
+    command: python -m app.bot
