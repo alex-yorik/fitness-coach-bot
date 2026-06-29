@@ -75,8 +75,9 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     conn.close()
 
+    data = load_content()
     await update.message.reply_text(
-        "✅ <b>Заявка принята!</b>\n\n"
+        data["trial"]["success"] + "\n\n"
         f"👤 Имя: {name}\n"
         f"🎂 Возраст: {age}\n"
         f"🎯 Цель: {goal}\n"
