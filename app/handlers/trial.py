@@ -16,11 +16,25 @@ from app.database import get_connection
 NAME, AGE, GOAL, CONTACT = range(4)
 
 
+def _trial_data():
+    return load_content()["trial"]
+
+
+def _trial_step(index: int) -> dict:
+    return _trial_data()["steps"][index]
+
+
+def _step_text(index: int) -> str:
+    step = _trial_step(index)
+    return f"Шаг {index + 1} из 4\n\n{step['question']}"
+
+
 async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    trial = _trial_data()
+
     await update.message.reply_text(
-        "📝 <b>Запись на пробный урок</b>\n\n"
-        "Шаг 1 из 4\n\n"
-        "Как вас зовут (или имя ребёнка)?",
+        f"<b>{trial['title']}</b>\n\n"
+        f"{_step_text(0)}",
         parse_mode=ParseMode.HTML,
         reply_markup=back_keyboard()
     )
@@ -30,8 +44,7 @@ async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
     await update.message.reply_text(
-        "Шаг 2 из 4\n\n"
-        "Сколько лет ученику?",
+        _step_text(1),
         reply_markup=back_keyboard()
     )
     return AGE
@@ -40,9 +53,7 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["age"] = update.message.text
     await update.message.reply_text(
-        "Шаг 3 из 4\n\n"
-        "Какова цель обучения?\n"
-        "Например: школьная программа, разговорный, ОГЭ, бизнес...",
+        _step_text(2),
         reply_markup=back_keyboard()
     )
     return GOAL
@@ -51,9 +62,7 @@ async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["goal"] = update.message.text
     await update.message.reply_text(
-        "Шаг 4 из 4\n\n"
-        "Оставьте контакт для связи:\n"
-        "Телефон, Telegram или WhatsApp",
+        _step_text(3),
         reply_markup=back_keyboard()
     )
     return CONTACT
@@ -61,6 +70,7 @@ async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
+    trial = _trial_data()
 
     name = context.user_data.get("name")
     age = context.user_data.get("age")
@@ -75,9 +85,8 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     conn.close()
 
-    data = load_content()
     await update.message.reply_text(
-        data["trial"]["success"] + "\n\n"
+        trial["success"] + "\n\n"
         f"👤 Имя: {name}\n"
         f"🎂 Возраст: {age}\n"
         f"🎯 Цель: {goal}\n"
@@ -92,7 +101,7 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
             text=(
-                "🔔 <b>Новая заявка на пробный урок!</b>\n\n"
+                f"{trial['admin_notify']}\n\n"
                 f"👤 Имя: {name}\n"
                 f"🎂 Возраст: {age}\n"
                 f"🎯 Цель: {goal}\n"
@@ -109,16 +118,21 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        "❌ Запись отменена.",
+        _trial_data()["cancelled"],
         reply_markup=main_keyboard()
     )
     return ConversationHandler.END
 
 
 def get_trial_handler(trial_button: str):
+    normalized_button = trial_button.strip()
+    button_variants = {trial_button, normalized_button}
+    if normalized_button:
+        button_variants.add(f"🔥 {normalized_button}")
+
     return ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Text([trial_button]), trial_start)
+            MessageHandler(filters.Text(list(button_variants)), trial_start)
         ],
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
