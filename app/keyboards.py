@@ -14,10 +14,9 @@ def main_keyboard():
         [
             KeyboardButton(data["trial"]["button"])
         ],
-        [
-            KeyboardButton(data["parents"]["title"])
-        ]
     ]
+    if "parents" in data and "title" in data["parents"]:
+        keyboard.append([KeyboardButton(data["parents"]["title"])])
 
     return ReplyKeyboardMarkup(
         keyboard,
