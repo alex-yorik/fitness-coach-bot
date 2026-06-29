@@ -23,6 +23,7 @@ def main():
     app.add_handler(get_trial_handler(trial_button))
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("exit", exit))
 
     app.add_handler(MessageHandler(
         filters.Text([data["about"]["title"]]), show_about
@@ -35,7 +36,7 @@ def main():
             filters.Text([data["parents"]["title"]]), show_parents
         ))
     app.add_handler(MessageHandler(
-        filters.Text(["◀️ Назад", "❌ Отменить"]), show_main_menu
+        filters.Text(["◀️ Назад", "❌ Отменить", "/exit"]), show_main_menu
     ))
 
     print("✅ TeacherBot запущен")
