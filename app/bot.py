@@ -30,9 +30,10 @@ def main():
     app.add_handler(MessageHandler(
         filters.Text([data["formats"]["title"]]), show_formats
     ))
-    app.add_handler(MessageHandler(
-        filters.Text([data["parents"]["title"]]), show_parents
-    ))
+    if "parents" in data and "title" in data["parents"]:
+        app.add_handler(MessageHandler(
+            filters.Text([data["parents"]["title"]]), show_parents
+        ))
     app.add_handler(MessageHandler(
         filters.Text(["◀️ Назад", "❌ Отменить"]), show_main_menu
     ))
