@@ -78,23 +78,40 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     contact = context.user_data.get("contact")
 
     conn = get_connection()
-    conn.execute(
-        "INSERT INTO applications (name, age, goal, contact) VALUES (?, ?, ?, ?)",
-        (name, age, goal, contact)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "INSERT INTO applications (name, age, goal, contact) VALUES (?, ?, ?, ?)",
+            (name, age, goal, contact)
+        )
+        conn.commit()
+        conn.close()
 
-    await update.message.reply_text(
-        trial["success"] + "\n\n"
-        f"👤 Имя: {name}\n"
-        f"🎂 Возраст: {age}\n"
-        f"🎯 Цель: {goal}\n"
-        f"📞 Контакт: {contact}\n\n"
-        "Тренер свяжется с вами в ближайшее время для согласования времени пробной тренировки.",
-        parse_mode=ParseMode.HTML,
-        reply_markup=main_keyboard()
-    )
+        await update.message.reply_text(
+            trial["success"] + "\n\n"
+            f"👤 Имя: {name}\n"
+            f"🎂 Возраст: {age}\n"
+            f"🎯 Цель: {goal}\n"
+            f"📞 Контакт: {contact}\n\n"
+            "Тренер свяжется с вами в ближайшее время для согласования времени пробной тренировки.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=main_keyboard()
+        )
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        await update.message.reply_text(
+            "Произошла ошибка при сохранении вашей заявки. Пожалуйста, попробуйте еще раз.",
+            reply_markup=main_keyboard()
+        )
+        print(f"Ошибка при сохранении заявки: {e}") # Логирование ошибки для отладки
+        if ADMIN_CHAT_ID:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text=f"❌ Ошибка при сохранении заявки:\n\n{e}\n\nДанные: {context.user_data}",
+                parse_mode=ParseMode.HTML
+            )
+        return ConversationHandler.END # Завершаем диалог при ошибке
 
     if ADMIN_CHAT_ID:
         user = update.effective_user
