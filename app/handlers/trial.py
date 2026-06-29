@@ -82,7 +82,7 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎂 Возраст: {age}\n"
         f"🎯 Цель: {goal}\n"
         f"📞 Контакт: {contact}\n\n"
-        "Елена свяжется с вами в ближайшее время для согласования времени пробного урока.",
+        "Тренер свяжется с вами в ближайшее время для согласования времени пробной тренировки.",
         parse_mode=ParseMode.HTML,
         reply_markup=main_keyboard()
     )
