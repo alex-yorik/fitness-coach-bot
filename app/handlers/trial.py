@@ -13,7 +13,7 @@ from app.content_loader import load_content
 from app.keyboards import main_keyboard, back_keyboard
 from app.database import get_connection
 
-NAME, AGE, GOAL, CONTACT = range(4)
+NAME, AGE, SERVICE, CONTACT = range(4)
 
 
 def _trial_data():
@@ -154,7 +154,7 @@ def get_trial_handler(trial_button: str):
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_name)],
             AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_age)],
-            GOAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_goal)],
+            GOAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_service)],
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_contact)],
         },
         fallbacks=[
