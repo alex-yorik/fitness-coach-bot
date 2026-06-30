@@ -22,10 +22,11 @@ def load_content(filename: str = None) -> dict:
     
     try:
         validate_content(data)
-        print(f"✅ Content validated successfully: {file_path.name}")
     except ContentValidationError as e:
         print(f"⚠️  Warning: {e}")
+        return {}
     
+    print(f"✅ Content validated successfully: {file_path.name}")
     return data
 
 
