@@ -5,14 +5,11 @@ from app.validators import validate_content, ContentValidationError
 CONTENT_PATH = Path(__file__).parent.parent / "content"
 
 
-def load_content(filename: str = None) -> dict:
+def load_content(filename: str = "manicure.json") -> dict:
     if filename:
         file_path = CONTENT_PATH / filename
     else:
-        json_files = list(CONTENT_PATH.glob("*.json"))
-        if not json_files:
-            raise FileNotFoundError(f"No JSON files found in {CONTENT_PATH}")
-        file_path = json_files[0]
+        file_path = CONTENT_PATH / "manicure.json"
     
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
