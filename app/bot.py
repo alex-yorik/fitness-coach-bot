@@ -39,9 +39,12 @@ def main():
             filters.Text([button_text]), partial(show_content_page, section_key=section_key)
         ))
     
-    # Обработчик для возврата в главное меню
+    # Обработчики для кнопок "Назад" и "Отменить"
     app.add_handler(MessageHandler(
-        filters.Text(["◀️ Назад", "❌ Отменить"]), show_main_menu
+        filters.Text(["◀️ Назад"]), show_main_menu
+    ))
+    app.add_handler(MessageHandler(
+        filters.Text(["❌ Отменить"]), show_main_menu
     ))
     app.add_handler(CommandHandler("menu", show_main_menu)) # Добавляем команду /menu для главного меню
 
