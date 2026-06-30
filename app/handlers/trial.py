@@ -152,10 +152,10 @@ def get_trial_handler(trial_button: str):
             MessageHandler(filters.Text(list(button_variants)), trial_start)
         ],
         states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_age)],
-            GOAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_goal)],
-            CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_contact)],
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_name)],
+            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_age)],
+            GOAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_goal)],
+            CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_contact)],
         },
         fallbacks=[
             MessageHandler(filters.Text(["❌ Отменить", "◀️ Назад"]), cancel),
