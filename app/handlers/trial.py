@@ -158,7 +158,8 @@ def get_trial_handler(trial_button: str):
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_contact)],
         },
         fallbacks=[
-            MessageHandler(filters.Text(["❌ Отменить", "◀️ Назад"]), cancel),
+            MessageHandler(filters.Text(["❌ Отменить"]), cancel),
+            MessageHandler(filters.Text(["◀️ Назад"]), cancel),
             CommandHandler("start", cancel),
         ]
     )
