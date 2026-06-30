@@ -49,7 +49,7 @@ rm -rf "$TARGET_DIR/.git"
 cp "$TARGET_DIR/.env.example" "$TARGET_DIR/.env"
 
 cp "$TEMPLATE_FILE" "$TARGET_DIR/content/${CLIENT_NAME}.json"
-rm -f "$TARGET_DIR/content/teacher.json"
+rm -f "$TARGET_DIR/content/fitness_coach.json"
 
 mkdir -p "$TARGET_DIR/media/about" "$TARGET_DIR/media/formats"
 

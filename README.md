@@ -1,6 +1,6 @@
 ## 📋 Доступные шаблоны
 
-- teacher
+- fitness-coach
 - fitness
 - beauty
 - psychologist
@@ -11,7 +11,7 @@
 Создать нового бота из шаблона:
 
 ```bash
-./init_new_bot.sh --template=fitness --name=ivan
+./init_new_bot.sh --template=fitness-coach --name=ivan
 ```
 
 После создания заполните `.env`, отредактируйте JSON-файл в папке `content/` и запустите проект через `docker-compose`.
@@ -21,5 +21,5 @@
 Проверить структуру JSON-контента:
 
 ```bash
-python app/validators.py content/teacher.json
+python app/validators.py content/fitness_coach.json
 ```

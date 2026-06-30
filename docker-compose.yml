@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  teacherbot:
+  fitness-coach:
     build: .
-    container_name: teacherbot
+    container_name: fitness-coach
     restart: unless-stopped
 
     env_file:

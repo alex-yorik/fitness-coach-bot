@@ -46,7 +46,7 @@ def main():
     app.add_handler(CommandHandler("menu", show_main_menu)) # Добавляем команду /menu для главного меню
 
 
-    print("✅ TeacherBot запущен")
+    print("✅ FitnessCoach запущен")
     app.run_polling()
 
 
