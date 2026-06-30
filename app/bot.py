@@ -30,6 +30,7 @@ def main():
     page_sections = {
         "about": data["about"]["title"],
         "formats": data["formats"]["title"],
+        "gallery": data["gallery"]["title"],
     }
     if "parents" in data and "title" in data["parents"]:
         page_sections["parents"] = data["parents"]["title"]

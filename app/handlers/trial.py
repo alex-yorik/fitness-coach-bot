@@ -26,7 +26,7 @@ def _trial_step(index: int) -> dict:
 
 def _step_text(index: int) -> str:
     step = _trial_step(index)
-    return f"Шаг {index + 1} из 4\n\n{step['question']}"
+    return f"Шаг {index + 1} из 3\n\n{step['question']}"
 
 
 async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
