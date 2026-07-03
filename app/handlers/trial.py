@@ -149,7 +149,14 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def back_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_step = context.user_data.get("trial_step", 0)
-    previous_step = max(current_step - 1, 0)
+    if current_step == 0:
+        await update.message.reply_text(
+            "Вы уже на первом шаге.",
+            reply_markup=back_keyboard()
+        )
+        return STEP_STATES[current_step]
+
+    previous_step = current_step - 1
     context.user_data["trial_step"] = previous_step
 
     await update.message.reply_text(
