@@ -13,7 +13,7 @@ from app.content_loader import load_content
 from app.keyboards import main_keyboard, back_keyboard
 from app.database import get_connection
 
-NAME, AGE, SERVICE, CONTACT = range(4)
+NAME, AGE, GOAL, CONTACT = range(4)
 
 
 def _trial_data():
@@ -24,9 +24,20 @@ def _trial_step(index: int) -> dict:
     return _trial_data()["steps"][index]
 
 
-def _step_text(index: int) -> str:
+STEP_STATES = [NAME, AGE, GOAL, CONTACT]
+STEP_KEYS = ["name", "age", "goal", "contact"]
+
+
+def _step_text(index: int, answers=None) -> str:
     step = _trial_step(index)
-    return f"Шаг {index + 1} из 3\n\n{step['question']}"
+    message = f"Шаг {index + 1} из {len(STEP_STATES)}\n\n{step['question']}"
+
+    if answers:
+        saved_answer = answers.get(STEP_KEYS[index])
+        if saved_answer:
+            message += f"\n\nТекущий ответ: {saved_answer}\nВведите новый ответ, чтобы изменить его."
+
+    return message
 
 
 async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,8 +54,9 @@ async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
+    context.user_data["trial_step"] = 1
     await update.message.reply_text(
-        _step_text(1),
+        _step_text(1, context.user_data),
         reply_markup=back_keyboard()
     )
     return AGE
@@ -52,8 +64,9 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["age"] = update.message.text
+    context.user_data["trial_step"] = 2
     await update.message.reply_text(
-        _step_text(2),
+        _step_text(2, context.user_data),
         reply_markup=back_keyboard()
     )
     return GOAL
@@ -61,8 +74,9 @@ async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["goal"] = update.message.text
+    context.user_data["trial_step"] = 3
     await update.message.reply_text(
-        _step_text(3),
+        _step_text(3, context.user_data),
         reply_markup=back_keyboard()
     )
     return CONTACT
@@ -70,6 +84,7 @@ async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
+    context.user_data["trial_step"] = 3
     trial = _trial_data()
 
     name = context.user_data.get("name")
@@ -132,6 +147,18 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+async def back_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    current_step = context.user_data.get("trial_step", 0)
+    previous_step = max(current_step - 1, 0)
+    context.user_data["trial_step"] = previous_step
+
+    await update.message.reply_text(
+        _step_text(previous_step, context.user_data),
+        reply_markup=back_keyboard()
+    )
+    return STEP_STATES[previous_step]
+
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
@@ -154,12 +181,12 @@ def get_trial_handler(trial_button: str):
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_name)],
             AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_age)],
-            GOAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_service)],
+            GOAL: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_goal)],
             CONTACT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Text(["❌ Отменить", "◀️ Назад"]), get_contact)],
         },
         fallbacks=[
             MessageHandler(filters.Text(["❌ Отменить"]), cancel),
-            MessageHandler(filters.Text(["◀️ Назад"]), cancel),
+            MessageHandler(filters.Text(["◀️ Назад"]), back_step),
             CommandHandler("start", cancel),
         ]
     )
