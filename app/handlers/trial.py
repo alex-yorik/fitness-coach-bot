@@ -100,6 +100,7 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         conn.commit()
         conn.close()
+        context.user_data.clear()
 
         await update.message.reply_text(
             trial["success"] + "\n\n"
