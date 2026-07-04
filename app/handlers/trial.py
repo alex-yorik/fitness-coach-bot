@@ -12,6 +12,7 @@ from app.config import ADMIN_CHAT_ID
 from app.content_loader import load_content
 from app.keyboards import main_keyboard, back_keyboard
 from app.database import get_connection
+from app.validators import validate_answer
 
 NAME, AGE, GOAL, CONTACT = range(4)
 
@@ -53,6 +54,15 @@ async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    step = _trial_step(0)
+    ok, _ = validate_answer(step.get("validation", "text"), update.message.text)
+    if not ok:
+        await update.message.reply_text(
+            step.get("error", "⚠️ Некорректный ответ, попробуйте ещё раз."),
+            reply_markup=back_keyboard()
+        )
+        return NAME
+
     context.user_data["name"] = update.message.text
     context.user_data["trial_step"] = 1
     await update.message.reply_text(
@@ -63,6 +73,15 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    step = _trial_step(1)
+    ok, _ = validate_answer(step.get("validation", "age"), update.message.text)
+    if not ok:
+        await update.message.reply_text(
+            step.get("error", "⚠️ Некорректный ответ, попробуйте ещё раз."),
+            reply_markup=back_keyboard()
+        )
+        return AGE
+
     context.user_data["age"] = update.message.text
     context.user_data["trial_step"] = 2
     await update.message.reply_text(
@@ -73,6 +92,15 @@ async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    step = _trial_step(2)
+    ok, _ = validate_answer(step.get("validation", "text"), update.message.text)
+    if not ok:
+        await update.message.reply_text(
+            step.get("error", "⚠️ Некорректный ответ, попробуйте ещё раз."),
+            reply_markup=back_keyboard()
+        )
+        return GOAL
+
     context.user_data["goal"] = update.message.text
     context.user_data["trial_step"] = 3
     await update.message.reply_text(
@@ -83,6 +111,15 @@ async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    step = _trial_step(3)
+    ok, _ = validate_answer(step.get("validation", "contact"), update.message.text)
+    if not ok:
+        await update.message.reply_text(
+            step.get("error", "⚠️ Некорректный ответ, попробуйте ещё раз."),
+            reply_markup=back_keyboard()
+        )
+        return CONTACT
+
     context.user_data["contact"] = update.message.text
     context.user_data["trial_step"] = 3
     trial = _trial_data()
@@ -107,8 +144,7 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👤 Имя: {name}\n"
             f"🎂 Возраст: {age}\n"
             f"🎯 Цель: {goal}\n"
-            f"📞 Контакт: {contact}\n\n"
-            "Тренер свяжется с вами в ближайшее время для согласования времени пробной тренировки.",
+            f"📞 Контакт: {contact}",
             parse_mode=ParseMode.HTML,
             reply_markup=main_keyboard()
         )
@@ -128,22 +164,6 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.HTML
             )
         return ConversationHandler.END # Завершаем диалог при ошибке
-
-    if ADMIN_CHAT_ID:
-        user = update.effective_user
-        await context.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
-            text=(
-                f"{trial['admin_notify']}\n\n"
-                f"👤 Имя: {name}\n"
-                f"🎂 Возраст: {age}\n"
-                f"🎯 Цель: {goal}\n"
-                f"📞 Контакт: {contact}\n\n"
-                f"Telegram пользователя: @{user.username or 'не указан'}\n"
-                f"ID: {user.id}"
-            ),
-            parse_mode=ParseMode.HTML
-        )
 
     return ConversationHandler.END
 

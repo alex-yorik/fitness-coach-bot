@@ -28,7 +28,7 @@
       {
         "key": "age",
         "question": "Сколько вам лет?",
-        "validation": "text",
+        "validation": "age",
         "error": "⚠️ Введите возраст"
       },
       {
@@ -51,5 +51,10 @@
   "ui": {
     "btn_back": "◀️ Назад",
     "btn_cancel": "❌ Отменить"
+  },
+  "gallery": {
+    "title": "📸 Галерея",
+    "description": "Фотографии тренировок и результатов клиентов",
+    "media": []
   }
 }

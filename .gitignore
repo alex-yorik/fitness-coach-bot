@@ -10,3 +10,5 @@ venv/
 .DS_Store
 data/database.db
 .aider.*
+.aider*
+data/*.db

@@ -171,3 +171,53 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n{e}")
         sys.exit(1)
+
+
+def validate_answer(validation_type: str, value: str):
+    """
+    Проверяет введённый пользователем ответ по типу валидации.
+    Возвращает (True, None) если всё ок, иначе (False, "причина").
+    """
+    value = (value or "").strip()
+
+    if not value:
+        return False, "empty"
+
+    if validation_type in ("text",):
+        if len(value) < 2 or len(value) > 200:
+            return False, "length"
+        return True, None
+
+    if validation_type in ("age", "number"):
+        if not value.isdigit():
+            return False, "not_a_number"
+        num = int(value)
+        if validation_type == "age" and not (1 <= num <= 100):
+            return False, "age_range"
+        if validation_type == "number" and not (0 <= num <= 1000000):
+            return False, "number_range"
+        return True, None
+
+    if validation_type == "phone":
+        digits = "".join(ch for ch in value if ch.isdigit())
+        if len(digits) < 7 or len(digits) > 15:
+            return False, "phone_format"
+        return True, None
+
+    if validation_type == "email":
+        import re
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value):
+            return False, "email_format"
+        return True, None
+
+    if validation_type == "contact":
+        digits = sum(ch.isdigit() for ch in value)
+        if value.startswith("@") and len(value) >= 4:
+            return True, None
+        if digits >= 7:
+            return True, None
+        if len(value) >= 4:
+            return True, None
+        return False, "contact_format"
+
+    return True, None
