@@ -16,3 +16,15 @@ services:
       - ./content:/app/content
 
     command: python -m app.bot
+
+  webadmin:
+    build: .
+    container_name: fitness-coach-webadmin
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "5004:5004"
+    command: python admin/web.py

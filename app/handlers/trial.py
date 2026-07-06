@@ -124,10 +124,11 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["trial_step"] = 3
     trial = _trial_data()
 
-    name = context.user_data.get("name")
-    age = context.user_data.get("age")
-    goal = context.user_data.get("goal")
-    contact = context.user_data.get("contact")
+    answers = context.user_data
+    name = answers.get("name")
+    age = answers.get("age")
+    goal = answers.get("goal")
+    contact = answers.get("contact")
 
     conn = get_connection()
     try:
@@ -137,21 +138,41 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         conn.commit()
         conn.close()
-        context.user_data.clear()
+        
+        # Get answers from user_data
+        name = context.user_data.get("name", "не указано")
+        age = context.user_data.get("age", "не указано")
+        goal = context.user_data.get("goal", "не указано")
+        contact = context.user_data.get("contact", "не указано")
+        
+        # Get psychologist name from content
+        content = load_content()
+        psychologist_name = content.get("name", "Психолог")
 
-        await update.message.reply_text(
-            trial["success"] + "\n\n"
+        # Format success message with all data
+        success_text = (
+            f"✅ {_trial_data()['success']}\n\n"
             f"👤 Имя: {name}\n"
             f"🎂 Возраст: {age}\n"
             f"🎯 Цель: {goal}\n"
-            f"📞 Контакт: {contact}",
+            f"📞 Контакт: {contact}\n\n"
+            f"{psychologist_name} свяжется с вами в ближайшее время для согласования времени первичной консультации."
+        )
+
+        await update.message.reply_text(
+            success_text,
             parse_mode=ParseMode.HTML,
             reply_markup=main_keyboard()
         )
 
+        # Clear user data and end conversation
+        await context.user_data.clear()
+        return ConversationHandler.END
+
     except Exception as e:
         conn.rollback()
         conn.close()
+        context.user_data.clear()
         await update.message.reply_text(
             "Произошла ошибка при сохранении вашей заявки. Пожалуйста, попробуйте еще раз.",
             reply_markup=main_keyboard()
