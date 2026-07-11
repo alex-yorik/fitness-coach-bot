@@ -145,18 +145,13 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal = context.user_data.get("goal", "не указано")
         contact = context.user_data.get("contact", "не указано")
         
-        # Get psychologist name from content
-        content = load_content()
-        psychologist_name = content.get("name", "Психолог")
-
         # Format success message with all data
         success_text = (
-            f"✅ {_trial_data()['success']}\n\n"
+            f"{_trial_data()['success']}\n\n"
             f"👤 Имя: {name}\n"
             f"🎂 Возраст: {age}\n"
             f"🎯 Цель: {goal}\n"
-            f"📞 Контакт: {contact}\n\n"
-            f"{psychologist_name} свяжется с вами в ближайшее время для согласования времени первичной консультации."
+            f"📞 Контакт: {contact}"
         )
 
         await update.message.reply_text(
