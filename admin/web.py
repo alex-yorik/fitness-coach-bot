@@ -6,20 +6,35 @@ import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from dotenv import load_dotenv
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY not set in .env")
+app.secret_key = SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
-FLASK_USERNAME = os.getenv("FLASK_USERNAME", "admin")
-FLASK_PASSWORD = os.getenv("FLASK_PASSWORD", "admin123")
+limiter = Limiter(key_func=get_remote_address, app=app)
+
+FLASK_USERNAME = os.getenv("FLASK_USERNAME")
+FLASK_PASSWORD = os.getenv("FLASK_PASSWORD")
+if not FLASK_USERNAME or not FLASK_PASSWORD:
+    raise RuntimeError("FLASK_USERNAME/FLASK_PASSWORD not set in .env")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/data/database.db")
 
 
 def get_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
@@ -33,6 +48,7 @@ def login_required(f):
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     error = None
     if request.method == "POST":
@@ -48,6 +64,14 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.after_request
+def set_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/")
@@ -101,6 +125,12 @@ def delete():
     return redirect(request.referrer or url_for("index"))
 
 
+def sanitize_cell(value):
+    if isinstance(value, str) and value.startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
 @app.route("/export")
 @login_required
 def export():
@@ -134,12 +164,12 @@ def export():
     for row in rows:
         ws.append([
             row["id"],
-            row["name"],
-            row["age"],
-            row["goal"],
-            row["contact"],
+            sanitize_cell(row["name"]),
+            sanitize_cell(row["age"]),
+            sanitize_cell(row["goal"]),
+            sanitize_cell(row["contact"]),
             row["created_at"][:16],
-            row["status"],
+            sanitize_cell(row["status"]),
         ])
 
     ws.column_dimensions["A"].width = 5

@@ -1,3 +1,4 @@
+from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -148,10 +149,10 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Format success message with all data
         success_text = (
             f"{_trial_data()['success']}\n\n"
-            f"👤 Имя: {name}\n"
-            f"🎂 Возраст: {age}\n"
-            f"🎯 Цель: {goal}\n"
-            f"📞 Контакт: {contact}"
+            f"👤 Имя: {escape(name)}\n"
+            f"🎂 Возраст: {escape(age)}\n"
+            f"🎯 Цель: {escape(goal)}\n"
+            f"📞 Контакт: {escape(contact)}"
         )
 
         await update.message.reply_text(
@@ -176,7 +177,7 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ADMIN_CHAT_ID:
             await context.bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
-                text=f"❌ Ошибка при сохранении заявки:\n\n{e}\n\nДанные: {context.user_data}",
+                text=f"❌ Ошибка при сохранении заявки:\n\n{escape(str(e))}\n\nДанные: {escape(str(context.user_data))}",
                 parse_mode=ParseMode.HTML
             )
         return ConversationHandler.END # Завершаем диалог при ошибке

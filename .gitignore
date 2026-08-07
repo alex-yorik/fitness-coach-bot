@@ -8,7 +8,8 @@ env/
 venv/
 *.log
 .DS_Store
-data/database.db
 .aider.*
 .aider*
-data/*.db
+media/
+data/database.db*
+backups/
