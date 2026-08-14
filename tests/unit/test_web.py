@@ -116,6 +116,25 @@ class TestFailClosed:
             assert sess.get("logged_in") is None
 
 
+class TestHealthz:
+    def test_healthz_ok_with_db(self, client):
+        resp = client.get("/healthz")
+        assert resp.status_code == 200
+        assert resp.get_data(as_text=True) == "ok"
+
+    def test_healthz_503_without_db(self, client, monkeypatch):
+        def broken_connection():
+            raise sqlite3.OperationalError("no such table")
+
+        monkeypatch.setattr(web, "get_connection", broken_connection)
+        resp = client.get("/healthz")
+        assert resp.status_code == 503
+        assert resp.get_data(as_text=True) == "unavailable"
+
+    def test_healthz_not_requires_login(self, client):
+        assert client.get("/healthz").status_code == 200
+
+
 class TestAuthenticated:
     def test_index_with_session(self, client):
         _login(client)

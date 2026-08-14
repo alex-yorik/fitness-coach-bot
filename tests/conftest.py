@@ -15,6 +15,10 @@ os.environ["FLASK_PASSWORD_HASH"] = hmac.new(
     _TEST_SECRET.encode(), TEST_PASSWORD.encode(), hashlib.sha256
 ).hexdigest()
 
+os.environ["LOG_PATH"] = os.path.join(tempfile.mkdtemp(), "bot.log")
+os.environ["WEB_LOG_PATH"] = os.path.join(tempfile.mkdtemp(), "web.log")
+os.environ["HEALTH_PORT"] = "18001"
+
 CREATE_APPLICATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

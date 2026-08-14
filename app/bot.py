@@ -8,14 +8,21 @@ from app.database import init_db
 from app.handlers.pages import show_content_page, show_main_menu  # Импортируем новую функцию
 from app.handlers.start import start
 from app.handlers.trial import get_trial_handler
+from app.health_server import start_health_server
+from app.logging_config import get_logger, setup_logging
+
+logger = get_logger(__name__)
 
 
 def main():
+    setup_logging()
     init_db()
 
     if not BOT_TOKEN:
-        print("❌ BOT_TOKEN не найден в .env")
+        logger.error("BOT_TOKEN не найден в .env")
         return
+
+    start_health_server()
 
     data = load_content()
     trial_button = data["trial"]["button"]
@@ -50,7 +57,7 @@ def main():
         CommandHandler("menu", show_main_menu)
     )  # Добавляем команду /menu для главного меню
 
-    print("✅ FitnessCoach запущен")
+    logger.info("FitnessCoach запущен")
     app.run_polling()
 
 

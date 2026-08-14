@@ -1,3 +1,5 @@
+import logging
+
 from telegram.ext import Application
 
 import app.bot as bot
@@ -14,16 +16,17 @@ def _content() -> dict:
 
 
 class TestMain:
-    def test_requires_token(self, monkeypatch, capsys):
+    def test_requires_token(self, monkeypatch, caplog):
         calls = []
         monkeypatch.setattr(bot, "BOT_TOKEN", None)
         monkeypatch.setattr(bot, "init_db", lambda: calls.append("init"))
+        monkeypatch.setattr(bot, "setup_logging", lambda *args, **kwargs: None)
 
-        bot.main()
+        with caplog.at_level(logging.ERROR):
+            bot.main()
 
-        out = capsys.readouterr().out
-        assert "BOT_TOKEN" in out
         assert calls == ["init"]
+        assert any("BOT_TOKEN" in record.message for record in caplog.records)
 
     def test_registers_handlers_and_runs(self, monkeypatch):
         calls = []
@@ -48,11 +51,14 @@ class TestMain:
         monkeypatch.setattr(Application, "builder", classmethod(lambda cls: FakeBuilder()))
         monkeypatch.setattr(bot, "BOT_TOKEN", "123:test-token")
         monkeypatch.setattr(bot, "init_db", lambda: calls.append("init"))
+        monkeypatch.setattr(bot, "setup_logging", lambda *args, **kwargs: None)
+        monkeypatch.setattr(bot, "start_health_server", lambda: calls.append("health"))
         monkeypatch.setattr(bot, "load_content", lambda: _content())
 
         bot.main()
 
         assert "init" in calls
+        assert "health" in calls
         assert "token:123:test-token" in calls
         assert "build" in calls
         assert "polling" in calls

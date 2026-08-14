@@ -1,3 +1,4 @@
+import logging
 from html import escape
 
 from telegram import Update
@@ -15,6 +16,8 @@ from app.content_loader import load_content
 from app.database import get_connection
 from app.keyboards import back_keyboard, main_keyboard
 from app.validators import validate_answer
+
+logger = logging.getLogger(__name__)
 
 NAME, AGE, GOAL, CONTACT = range(4)
 
@@ -116,7 +119,7 @@ async def _save_application(context: ContextTypes.DEFAULT_TYPE, answers: dict) -
         conn.commit()
     except Exception as e:
         conn.rollback()
-        print(f"Ошибка при сохранении заявки: {e}")
+        logger.error("Ошибка при сохранении заявки: %s", e)
         if ADMIN_CHAT_ID:
             await context.bot.send_message(
                 chat_id=ADMIN_CHAT_ID,

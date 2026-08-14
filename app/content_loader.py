@@ -1,7 +1,10 @@
 import json
+import logging
 from pathlib import Path
 
 from app.validators import ContentValidationError, validate_content
+
+logger = logging.getLogger(__name__)
 
 CONTENT_PATH = Path(__file__).parent.parent / "content"
 
@@ -25,10 +28,10 @@ def load_content(filename: str = "fitness_coach.json") -> dict:
     try:
         validate_content(data)
     except ContentValidationError as e:
-        print(f"⚠️  Warning: {e}")
+        logger.warning("Content validation failed: %s", e)
         data = {}
     else:
-        print(f"✅ Content validated successfully: {file_path.name}")
+        logger.info("Content validated successfully: %s", file_path.name)
 
     _CACHE[str(file_path)] = (mtime, data)
     return data

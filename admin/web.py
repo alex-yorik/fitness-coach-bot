@@ -13,7 +13,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from app.logging_config import WEB_LOG_PATH, get_logger, setup_logging
+
 load_dotenv()
+
+logger = get_logger(__name__)
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -96,6 +100,18 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/healthz")
+def healthz():
+    try:
+        conn = get_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+    except Exception:
+        logger.exception("Healthcheck: БД недоступна")
+        return "unavailable", 503
+    return "ok", 200
 
 
 @app.after_request
@@ -239,4 +255,6 @@ def export():
 
 
 if __name__ == "__main__":
+    setup_logging(WEB_LOG_PATH)
+    logger.info("Webadmin запущен на порту 5004")
     app.run(host="0.0.0.0", port=5004)  # nosec B104 - намеренно: внешний порт мапится на контейнер

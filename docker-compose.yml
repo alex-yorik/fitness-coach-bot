@@ -15,7 +15,17 @@ services:
       - ./logs:/app/logs
       - ./content:/app/content
 
+    ports:
+      - "8001:8001"
+
     command: python -m app.bot
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   webadmin:
     build: .
@@ -25,6 +35,14 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - ./logs:/app/logs
     ports:
       - "5004:5004"
-    command: python admin/web.py
+    command: python -m admin.web
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
