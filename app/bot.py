@@ -1,12 +1,13 @@
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from functools import partial
 
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+
 from app.config import BOT_TOKEN
-from app.database import init_db
-from app.handlers.start import start
-from app.handlers.pages import show_content_page, show_main_menu # Импортируем новую функцию
-from app.handlers.trial import get_trial_handler
 from app.content_loader import load_content
+from app.database import init_db
+from app.handlers.pages import show_content_page, show_main_menu  # Импортируем новую функцию
+from app.handlers.start import start
+from app.handlers.trial import get_trial_handler
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
     app.add_handler(get_trial_handler(trial_button))
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("exit", show_main_menu)) # /exit теперь ведет на главное меню
+    app.add_handler(CommandHandler("exit", show_main_menu))  # /exit теперь ведет на главное меню
 
     # Регистрация обработчиков для статических страниц
     page_sections = {
@@ -36,19 +37,18 @@ def main():
         page_sections["parents"] = data["parents"]["title"]
 
     for section_key, button_text in page_sections.items():
-        app.add_handler(MessageHandler(
-            filters.Text([button_text]), partial(show_content_page, section_key=section_key)
-        ))
-    
-    # Обработчики для кнопок "Назад" и "Отменить"
-    app.add_handler(MessageHandler(
-        filters.Text(["◀️ Назад"]), show_main_menu
-    ))
-    app.add_handler(MessageHandler(
-        filters.Text(["❌ Отменить"]), show_main_menu
-    ))
-    app.add_handler(CommandHandler("menu", show_main_menu)) # Добавляем команду /menu для главного меню
+        app.add_handler(
+            MessageHandler(
+                filters.Text([button_text]), partial(show_content_page, section_key=section_key)
+            )
+        )
 
+    # Обработчики для кнопок "Назад" и "Отменить"
+    app.add_handler(MessageHandler(filters.Text(["◀️ Назад"]), show_main_menu))
+    app.add_handler(MessageHandler(filters.Text(["❌ Отменить"]), show_main_menu))
+    app.add_handler(
+        CommandHandler("menu", show_main_menu)
+    )  # Добавляем команду /menu для главного меню
 
     print("✅ FitnessCoach запущен")
     app.run_polling()

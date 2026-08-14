@@ -10,14 +10,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = load_content()
     welcome = data["welcome"]
 
-    text = (
-        f"<b>{welcome['title']}</b>\n\n"
-        f"{welcome['text']}\n\n"
-        "👇 Выберите нужный раздел:"
-    )
+    text = f"<b>{welcome['title']}</b>\n\n{welcome['text']}\n\n👇 Выберите нужный раздел:"
 
     await update.message.reply_text(
-        text=text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=main_keyboard()
+        text=text, parse_mode=ParseMode.HTML, reply_markup=main_keyboard()
     )

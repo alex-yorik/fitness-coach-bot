@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from app.validators import validate_content, ContentValidationError
+
+from app.validators import ContentValidationError, validate_content
 
 CONTENT_PATH = Path(__file__).parent.parent / "content"
 
@@ -10,33 +11,33 @@ def load_content(filename: str = "fitness_coach.json") -> dict:
         file_path = CONTENT_PATH / filename
     else:
         file_path = CONTENT_PATH / "fitness_coach.json"
-    
+
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
-    
-    with open(file_path, 'r', encoding='utf-8') as f:
+
+    with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     try:
         validate_content(data)
     except ContentValidationError as e:
         print(f"⚠️  Warning: {e}")
         return {}
-    
+
     print(f"✅ Content validated successfully: {file_path.name}")
     return data
 
 
 def get_menu(data: dict) -> list:
     menu = []
-    
+
     for key in ["about", "formats", "services", "portfolio", "parents"]:
         if key in data and "title" in data[key]:
             menu.append(data[key]["title"])
-    
+
     if "trial" in data and "button" in data["trial"]:
         menu.append(data["trial"]["button"])
-    
+
     return menu
 
 

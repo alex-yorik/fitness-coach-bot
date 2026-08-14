@@ -1,13 +1,14 @@
+import io
 import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
 from functools import wraps
-import io
+
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment
 from dotenv import load_dotenv
+from flask import Flask, redirect, render_template, request, send_file, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from openpyxl.styles import Alignment, Font, PatternFill
 
 load_dotenv()
 
@@ -44,6 +45,7 @@ def login_required(f):
         if not session.get("logged_in"):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -52,8 +54,10 @@ def login_required(f):
 def login():
     error = None
     if request.method == "POST":
-        if (request.form["username"] == FLASK_USERNAME and
-                request.form["password"] == FLASK_PASSWORD):
+        if (
+            request.form["username"] == FLASK_USERNAME
+            and request.form["password"] == FLASK_PASSWORD
+        ):
             session["logged_in"] = True
             return redirect(url_for("index"))
         error = "Неверный логин или пароль"
@@ -82,23 +86,24 @@ def index():
 
     if status_filter:
         apps = conn.execute(
-            "SELECT * FROM applications WHERE status=? ORDER BY created_at DESC",
-            (status_filter,)
+            "SELECT * FROM applications WHERE status=? ORDER BY created_at DESC", (status_filter,)
         ).fetchall()
     else:
-        apps = conn.execute(
-            "SELECT * FROM applications ORDER BY created_at DESC"
-        ).fetchall()
+        apps = conn.execute("SELECT * FROM applications ORDER BY created_at DESC").fetchall()
 
     stats = {
         "total": conn.execute("SELECT COUNT(*) FROM applications").fetchone()[0],
         "new": conn.execute("SELECT COUNT(*) FROM applications WHERE status='new'").fetchone()[0],
-        "in_progress": conn.execute("SELECT COUNT(*) FROM applications WHERE status='in_progress'").fetchone()[0],
+        "in_progress": conn.execute(
+            "SELECT COUNT(*) FROM applications WHERE status='in_progress'"
+        ).fetchone()[0],
         "done": conn.execute("SELECT COUNT(*) FROM applications WHERE status='done'").fetchone()[0],
     }
     conn.close()
 
-    return render_template("index.html", applications=apps, stats=stats, current_status=status_filter)
+    return render_template(
+        "index.html", applications=apps, stats=stats, current_status=status_filter
+    )
 
 
 @app.route("/update_status", methods=["POST"])
@@ -106,7 +111,9 @@ def index():
 def update_status():
     app_id = request.form["id"]
     new_status = request.form["status"]
-    status_filter = request.referrer.split("status=")[-1] if "status=" in (request.referrer or "") else ""
+    status_filter = (
+        request.referrer.split("status=")[-1] if "status=" in (request.referrer or "") else ""
+    )
     conn = get_connection()
     conn.execute("UPDATE applications SET status=? WHERE id=?", (new_status, app_id))
     conn.commit()
@@ -138,13 +145,10 @@ def export():
     conn = get_connection()
     if status_filter:
         rows = conn.execute(
-            "SELECT * FROM applications WHERE status=? ORDER BY created_at DESC",
-            (status_filter,)
+            "SELECT * FROM applications WHERE status=? ORDER BY created_at DESC", (status_filter,)
         ).fetchall()
     else:
-        rows = conn.execute(
-            "SELECT * FROM applications ORDER BY created_at DESC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM applications ORDER BY created_at DESC").fetchall()
     conn.close()
 
     wb = openpyxl.Workbook()
@@ -162,15 +166,17 @@ def export():
         cell.alignment = Alignment(horizontal="center")
 
     for row in rows:
-        ws.append([
-            row["id"],
-            sanitize_cell(row["name"]),
-            sanitize_cell(row["age"]),
-            sanitize_cell(row["goal"]),
-            sanitize_cell(row["contact"]),
-            row["created_at"][:16],
-            sanitize_cell(row["status"]),
-        ])
+        ws.append(
+            [
+                row["id"],
+                sanitize_cell(row["name"]),
+                sanitize_cell(row["age"]),
+                sanitize_cell(row["goal"]),
+                sanitize_cell(row["contact"]),
+                row["created_at"][:16],
+                sanitize_cell(row["status"]),
+            ]
+        )
 
     ws.column_dimensions["A"].width = 5
     ws.column_dimensions["B"].width = 20
@@ -188,7 +194,7 @@ def export():
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         as_attachment=True,
-        download_name="applications.xlsx"
+        download_name="applications.xlsx",
     )
 
 

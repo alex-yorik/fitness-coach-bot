@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fitness-coach-bot"
+version = "0.1.0"
+description = "Telegram-бот фитнес-тренера с формой записи, мини-CRM и веб-админкой"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [".git", ".opencode", ".aider*", "backups", "data", "logs"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "admin"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: тесты, требующие сеть/реальные API (не блокируют обычный прогон)",
+]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = ["app/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

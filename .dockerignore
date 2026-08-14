@@ -6,8 +6,15 @@ logs/
 media/
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
 .git
 .gitignore
+.dockerignore
+.pre-commit-config.yaml
+pyproject.toml
+scripts/
 README.md
 docker-compose.yml
 Dockerfile

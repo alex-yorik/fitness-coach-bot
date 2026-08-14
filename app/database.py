@@ -1,5 +1,5 @@
-import sqlite3
 import os
+import sqlite3
 
 from app.config import DATABASE_PATH
 

@@ -13,3 +13,7 @@ venv/
 media/
 data/database.db*
 backups/
+.pytest_cache/
+.ruff_cache/
+.coverage
+logs/
