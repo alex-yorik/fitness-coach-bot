@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from app.database import get_connection
 from app.logging_config import get_logger
 
-HEALTH_HOST = os.getenv("HEALTH_HOST", "0.0.0.0")
+HEALTH_HOST = os.getenv("HEALTH_HOST", "0.0.0.0")  # nosec B104 - для проверки снаружи
 HEALTH_PORT = int(os.getenv("HEALTH_PORT", "8001"))
 
 logger = get_logger(__name__)
