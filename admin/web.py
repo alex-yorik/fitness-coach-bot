@@ -172,18 +172,8 @@ def sanitize_cell(value):
     return value
 
 
-@app.route("/export")
-@login_required
-def export():
-    status_filter = request.args.get("status", "")
-    conn = get_connection()
-    if status_filter:
-        rows = conn.execute(
-            "SELECT * FROM applications WHERE status=? ORDER BY created_at DESC", (status_filter,)
-        ).fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM applications ORDER BY created_at DESC").fetchall()
-    conn.close()
+def _build_workbook(rows) -> io.BytesIO:
+    """Собирает Excel-файл с заявками и возвращает его как BytesIO."""
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -223,7 +213,23 @@ def export():
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
+    return output
 
+
+@app.route("/export")
+@login_required
+def export():
+    status_filter = request.args.get("status", "")
+    conn = get_connection()
+    if status_filter:
+        rows = conn.execute(
+            "SELECT * FROM applications WHERE status=? ORDER BY created_at DESC", (status_filter,)
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM applications ORDER BY created_at DESC").fetchall()
+    conn.close()
+
+    output = _build_workbook(rows)
     return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

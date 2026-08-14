@@ -104,6 +104,46 @@ async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONTACT
 
 
+async def _save_application(context: ContextTypes.DEFAULT_TYPE, answers: dict) -> None:
+    """Сохраняет заявку в БД, логирует ошибку и уведомляет администратора."""
+
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO applications (name, age, goal, contact) VALUES (?, ?, ?, ?)",
+            (answers.get("name"), answers.get("age"), answers.get("goal"), answers.get("contact")),
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"Ошибка при сохранении заявки: {e}")
+        if ADMIN_CHAT_ID:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text=f"❌ Ошибка при сохранении заявки:\n\n{escape(str(e))}\n\n"
+                f"Данные: {escape(str(answers))}",
+                parse_mode=ParseMode.HTML,
+            )
+        raise
+    finally:
+        conn.close()
+
+
+async def _success_reply(update: Update, answers: dict) -> None:
+    """Отправляет пользователю сообщение об успешном сохранении заявки."""
+
+    success_text = (
+        f"{_trial_data()['success']}\n\n"
+        f"👤 Имя: {escape(answers.get('name', 'не указано'))}\n"
+        f"🎂 Возраст: {escape(answers.get('age', 'не указано'))}\n"
+        f"🎯 Цель: {escape(answers.get('goal', 'не указано'))}\n"
+        f"📞 Контакт: {escape(answers.get('contact', 'не указано'))}"
+    )
+    await update.message.reply_text(
+        success_text, parse_mode=ParseMode.HTML, reply_markup=main_keyboard()
+    )
+
+
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     step = _trial_step(3)
     ok, _ = validate_answer(step.get("validation", "contact"), update.message.text)
@@ -116,63 +156,19 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["contact"] = update.message.text
     context.user_data["trial_step"] = 3
-    _trial_data()
 
-    answers = context.user_data
-    name = answers.get("name")
-    age = answers.get("age")
-    goal = answers.get("goal")
-    contact = answers.get("contact")
-
-    conn = get_connection()
     try:
-        conn.execute(
-            "INSERT INTO applications (name, age, goal, contact) VALUES (?, ?, ?, ?)",
-            (name, age, goal, contact),
-        )
-        conn.commit()
-        conn.close()
-
-        # Get answers from user_data
-        name = context.user_data.get("name", "не указано")
-        age = context.user_data.get("age", "не указано")
-        goal = context.user_data.get("goal", "не указано")
-        contact = context.user_data.get("contact", "не указано")
-
-        # Format success message with all data
-        success_text = (
-            f"{_trial_data()['success']}\n\n"
-            f"👤 Имя: {escape(name)}\n"
-            f"🎂 Возраст: {escape(age)}\n"
-            f"🎯 Цель: {escape(goal)}\n"
-            f"📞 Контакт: {escape(contact)}"
-        )
-
-        await update.message.reply_text(
-            success_text, parse_mode=ParseMode.HTML, reply_markup=main_keyboard()
-        )
-
-        # Clear user data and end conversation
-        await context.user_data.clear()
-        return ConversationHandler.END
-
-    except Exception as e:
-        conn.rollback()
-        conn.close()
+        await _save_application(context, context.user_data)
+    except Exception:
         context.user_data.clear()
         await update.message.reply_text(
             "Произошла ошибка при сохранении вашей заявки. Пожалуйста, попробуйте еще раз.",
             reply_markup=main_keyboard(),
         )
-        print(f"Ошибка при сохранении заявки: {e}")  # Логирование ошибки для отладки
-        if ADMIN_CHAT_ID:
-            await context.bot.send_message(
-                chat_id=ADMIN_CHAT_ID,
-                text=f"❌ Ошибка при сохранении заявки:\n\n{escape(str(e))}\n\nДанные: {escape(str(context.user_data))}",
-                parse_mode=ParseMode.HTML,
-            )
-        return ConversationHandler.END  # Завершаем диалог при ошибке
+        return ConversationHandler.END
 
+    await _success_reply(update, context.user_data)
+    context.user_data.clear()
     return ConversationHandler.END
 
 

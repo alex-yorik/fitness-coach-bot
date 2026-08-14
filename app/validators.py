@@ -12,16 +12,16 @@ class ContentValidationError(Exception):
     pass
 
 
-def validate_content(data: Dict[str, Any]) -> bool:
-    errors = []
-
-    # Check required top-level fields
+def _check_top_level_fields(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет обязательные поля верхнего уровня."""
     required_top_fields = ["name", "profession", "welcome", "trial", "ui"]
     for field in required_top_fields:
         if field not in data:
             errors.append(f"Missing required field: '{field}'")
 
-    # Check welcome section
+
+def _check_welcome(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет секцию welcome."""
     if "welcome" in data:
         welcome = data["welcome"]
         if "title" not in welcome:
@@ -29,41 +29,47 @@ def validate_content(data: Dict[str, Any]) -> bool:
         if "text" not in welcome:
             errors.append("Missing 'text' in 'welcome' section")
 
-    # Check trial section
-    if "trial" in data:
-        trial = data["trial"]
 
-        if "button" not in trial:
-            errors.append("Missing 'button' in 'trial' section")
-        if "steps" not in trial:
-            errors.append("Missing 'steps' in 'trial' section")
-        elif not isinstance(trial["steps"], list):
-            errors.append("'trial.steps' must be a list")
-        else:
-            for i, step in enumerate(trial["steps"]):
-                if not isinstance(step, dict):
-                    errors.append(f"Step {i + 1} must be a dictionary")
-                    continue
+def _check_trial(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет секцию trial."""
+    if "trial" not in data:
+        return
 
-                if "key" not in step:
-                    errors.append(f"Step {i + 1} missing 'key' field")
-                if "question" not in step:
-                    errors.append(f"Step {i + 1} missing 'question' field")
+    trial = data["trial"]
 
-                if "validation" in step:
-                    valid_validations = ["text", "age", "contact", "email", "phone", "number"]
-                    if step["validation"] not in valid_validations:
-                        errors.append(
-                            f"Invalid 'validation' in step {i + 1}: {step['validation']}. "
-                            f"Allowed: {', '.join(valid_validations)}"
-                        )
+    if "button" not in trial:
+        errors.append("Missing 'button' in 'trial' section")
+    if "steps" not in trial:
+        errors.append("Missing 'steps' in 'trial' section")
+    elif not isinstance(trial["steps"], list):
+        errors.append("'trial.steps' must be a list")
+    else:
+        for i, step in enumerate(trial["steps"]):
+            if not isinstance(step, dict):
+                errors.append(f"Step {i + 1} must be a dictionary")
+                continue
 
-        if "success" in trial and not isinstance(trial["success"], str):
-            errors.append("'trial.success' must be a string")
-        if "cancelled" in trial and not isinstance(trial["cancelled"], str):
-            errors.append("'trial.cancelled' must be a string")
+            if "key" not in step:
+                errors.append(f"Step {i + 1} missing 'key' field")
+            if "question" not in step:
+                errors.append(f"Step {i + 1} missing 'question' field")
 
-    # Check ui section
+            if "validation" in step:
+                valid_validations = ["text", "age", "contact", "email", "phone", "number"]
+                if step["validation"] not in valid_validations:
+                    errors.append(
+                        f"Invalid 'validation' in step {i + 1}: {step['validation']}. "
+                        f"Allowed: {', '.join(valid_validations)}"
+                    )
+
+    if "success" in trial and not isinstance(trial["success"], str):
+        errors.append("'trial.success' must be a string")
+    if "cancelled" in trial and not isinstance(trial["cancelled"], str):
+        errors.append("'trial.cancelled' must be a string")
+
+
+def _check_ui(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет секцию ui."""
     if "ui" in data:
         ui = data["ui"]
         if "btn_back" not in ui:
@@ -71,7 +77,9 @@ def validate_content(data: Dict[str, Any]) -> bool:
         if "btn_cancel" not in ui:
             errors.append("Missing 'btn_cancel' in 'ui' section")
 
-    # Check media sections
+
+def _check_media_sections(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет медиа-секции about/formats/parents/services/portfolio."""
     optional_sections = ["about", "formats", "parents", "services", "portfolio"]
     for section in optional_sections:
         if section in data:
@@ -98,10 +106,24 @@ def validate_content(data: Dict[str, Any]) -> bool:
                         if "file" not in item:
                             errors.append(f"Item {i + 1} in '{section}.media' missing 'file'")
 
+
+def _check_field_types(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет типы полей name и profession."""
     if "name" in data and not isinstance(data["name"], str):
         errors.append("'name' must be a string")
     if "profession" in data and not isinstance(data["profession"], str):
         errors.append("'profession' must be a string")
+
+
+def validate_content(data: Dict[str, Any]) -> bool:
+    errors: list = []
+
+    _check_top_level_fields(data, errors)
+    _check_welcome(data, errors)
+    _check_trial(data, errors)
+    _check_ui(data, errors)
+    _check_media_sections(data, errors)
+    _check_field_types(data, errors)
 
     if errors:
         error_message = "Content validation errors:\n\n" + "\n".join(errors)

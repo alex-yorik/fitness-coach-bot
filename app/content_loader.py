@@ -5,15 +5,19 @@ from app.validators import ContentValidationError, validate_content
 
 CONTENT_PATH = Path(__file__).parent.parent / "content"
 
+_CACHE: dict[str, tuple[float, dict]] = {}
+
 
 def load_content(filename: str = "fitness_coach.json") -> dict:
-    if filename:
-        file_path = CONTENT_PATH / filename
-    else:
-        file_path = CONTENT_PATH / "fitness_coach.json"
+    file_path = CONTENT_PATH / (filename or "fitness_coach.json")
 
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
+
+    mtime = file_path.stat().st_mtime
+    cached = _CACHE.get(str(file_path))
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
 
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -22,9 +26,11 @@ def load_content(filename: str = "fitness_coach.json") -> dict:
         validate_content(data)
     except ContentValidationError as e:
         print(f"⚠️  Warning: {e}")
-        return {}
+        data = {}
+    else:
+        print(f"✅ Content validated successfully: {file_path.name}")
 
-    print(f"✅ Content validated successfully: {file_path.name}")
+    _CACHE[str(file_path)] = (mtime, data)
     return data
 
 
