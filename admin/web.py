@@ -1,5 +1,8 @@
+import hashlib
+import hmac
 import io
 import os
+import secrets
 import sqlite3
 from functools import wraps
 
@@ -20,14 +23,16 @@ app.secret_key = SECRET_KEY
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "true").lower()
+    in ("1", "true", "yes"),
 )
 
 limiter = Limiter(key_func=get_remote_address, app=app)
 
 FLASK_USERNAME = os.getenv("FLASK_USERNAME")
-FLASK_PASSWORD = os.getenv("FLASK_PASSWORD")
-if not FLASK_USERNAME or not FLASK_PASSWORD:
-    raise RuntimeError("FLASK_USERNAME/FLASK_PASSWORD not set in .env")
+FLASK_PASSWORD_HASH = os.getenv("FLASK_PASSWORD_HASH")
+if not FLASK_USERNAME or not FLASK_PASSWORD_HASH:
+    raise RuntimeError("FLASK_USERNAME/FLASK_PASSWORD_HASH not set in .env")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/data/database.db")
 
 
@@ -37,6 +42,29 @@ def get_connection():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     return conn
+
+
+def password_matches(password: str) -> bool:
+    digest = hmac.new(SECRET_KEY.encode(), password.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(digest, FLASK_PASSWORD_HASH)
+
+
+def get_csrf_token() -> str:
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
+
+
+def csrf_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = session.get("csrf_token")
+        form_token = request.form.get("csrf_token", "")
+        if not token or not hmac.compare_digest(token, form_token):
+            return "CSRF token mismatch", 400
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 def login_required(f):
@@ -54,10 +82,10 @@ def login_required(f):
 def login():
     error = None
     if request.method == "POST":
-        if (
-            request.form["username"] == FLASK_USERNAME
-            and request.form["password"] == FLASK_PASSWORD
+        if request.form["username"] == FLASK_USERNAME and password_matches(
+            request.form["password"]
         ):
+            session.clear()
             session["logged_in"] = True
             return redirect(url_for("index"))
         error = "Неверный логин или пароль"
@@ -102,12 +130,17 @@ def index():
     conn.close()
 
     return render_template(
-        "index.html", applications=apps, stats=stats, current_status=status_filter
+        "index.html",
+        applications=apps,
+        stats=stats,
+        current_status=status_filter,
+        csrf_token=get_csrf_token(),
     )
 
 
 @app.route("/update_status", methods=["POST"])
 @login_required
+@csrf_required
 def update_status():
     app_id = request.form["id"]
     new_status = request.form["status"]
@@ -123,6 +156,7 @@ def update_status():
 
 @app.route("/delete", methods=["POST"])
 @login_required
+@csrf_required
 def delete():
     app_id = request.form["id"]
     conn = get_connection()

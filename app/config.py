@@ -8,6 +8,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 
 FLASK_USERNAME = os.getenv("FLASK_USERNAME")
-FLASK_PASSWORD = os.getenv("FLASK_PASSWORD")
+FLASK_PASSWORD_HASH = os.getenv("FLASK_PASSWORD_HASH")
 
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/data/database.db")

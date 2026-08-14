@@ -5,6 +5,14 @@
 
 ## Открытые
 
+### 2026-08-14 — Веб-админка отдаётся по HTTP без TLS
+
+`SESSION_COOKIE_SECURE` в коде по умолчанию `True` (fail-closed), но в
+рабочем `.env` временно `False`, т.к. админка доступна по `http://IP:5004`.
+Браузер не хранит Secure-cookie по HTTP, поэтому без TLS flag ломает логин.
+Закрыть: TLS перед админкой (Caddy auto-TLS или reverse proxy), затем
+`SESSION_COOKIE_SECURE=True` в `.env`.
+
 ### 2026-08-14 — Функции превышают лимит 50 строк (check_modularity)
 
 Три функции нарушают модульность-гейт (`scripts/check_modularity.py`,

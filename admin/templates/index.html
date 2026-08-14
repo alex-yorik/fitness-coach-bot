@@ -77,6 +77,7 @@
             <td>{{ row.created_at[:16] }}</td>
             <td>
                 <form method="POST" action="/update_status">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="id" value="{{ row.id }}">
                     <select name="status" onchange="this.form.submit()">
                         <option value="new" {% if row.status == 'new' %}selected{% endif %}>🆕 Новая</option>
@@ -87,6 +88,7 @@
             </td>
             <td>
                 <form method="POST" action="/delete" onsubmit="return confirm('Удалить заявку?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="id" value="{{ row.id }}">
                     <button class="delete-btn">🗑</button>
                 </form>

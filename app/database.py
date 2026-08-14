@@ -30,5 +30,9 @@ def init_db():
     )
     """)
 
+    columns = [row[1] for row in conn.execute("PRAGMA table_info(applications)")]
+    if "status" not in columns:
+        conn.execute("ALTER TABLE applications ADD COLUMN status TEXT NOT NULL DEFAULT 'new'")
+
     conn.commit()
     conn.close()

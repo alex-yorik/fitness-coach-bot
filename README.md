@@ -46,18 +46,36 @@ Telegram-бот фитнес-тренера с формой записи на п
         BOT_TOKEN=ваш_токен_от_BotFather
         ADMIN_CHAT_ID=telegram_id_тренера
         FLASK_USERNAME=admin
-        FLASK_PASSWORD=admin123
+        SECRET_KEY=случайный_64-символьный_hex
+        FLASK_PASSWORD_HASH=<см. ниже>
         DATABASE_PATH=/app/data/database.db
 
-2. Запустить:
+2. Сгенерировать хеш пароля админки (вместо хранения в открытом виде):
+
+        cd /opt/fitness-coach
+        python3 -c "from dotenv import load_dotenv; load_dotenv(); import hmac,hashlib,os; print(hmac.new(os.environ['SECRET_KEY'].encode(), b'ваш_пароль', hashlib.sha256).hexdigest())"
+
+   Значение записать в `FLASK_PASSWORD_HASH`.
+
+3. Запустить:
 
         docker-compose up -d --build
+
+## 🔐 Миграция с открытого пароля
+
+Если в `.env` ещё остался `FLASK_PASSWORD` в открытом виде, сгенерируйте
+хеш из него и удалите ключ:
+
+    python3 -c "from dotenv import load_dotenv; load_dotenv(); import hmac,hashlib,os; print(hmac.new(os.environ['SECRET_KEY'].encode(), os.environ['FLASK_PASSWORD'].encode(), hashlib.sha256).hexdigest())"
+
+Затем в `.env`: `FLASK_PASSWORD_HASH=<вывод>` и удалить строку `FLASK_PASSWORD=...`.
 
 ## 🌐 Веб-админка
 
 Доступна по адресу: **http://ВАШ_IP:5004**
 
-Логин и пароль задаются в `.env` (по умолчанию `admin` / ).
+Логин и пароль задаются в `.env` (по умолчанию логин `admin`, пароль —
+только в виде хеша `FLASK_PASSWORD_HASH`).
 
 Возможности:
 - Просмотр всех заявок
