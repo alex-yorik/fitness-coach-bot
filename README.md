@@ -109,15 +109,32 @@ Telegram-бот фитнес-тренера с формой записи на п
 ## 🧪 Тесты
 
     # Быстрый прогон (unit-тесты, без сети)
-    pytest
+    python -m pytest tests/unit -m "not live"
 
     # С coverage-гейтом (>=80%)
-    pytest --cov --cov-fail-under=80
+    python -m pytest tests/unit -m "not live" --cov --cov-fail-under=80
 
 Live-тесты, требующие реальный Telegram API, помечены `@pytest.mark.live`
 и по умолчанию пропускаются. Запуск только вручную:
 
-    RUN_LIVE_TESTS=1 pytest -m live
+    RUN_LIVE_TESTS=1 python -m pytest -m live
+
+## 🤖 CI/CD
+
+Проверки качества автоматически запускаются на каждый push/PR в `main`
+(GitHub Actions, Python 3.12, < 5 мин):
+
+| Workflow | Что проверяет |
+|---|---|
+| `ci.yml` | ruff check + format, py_compile всех файлов, unit-тесты, docker build |
+| `quality-gates.yml` | bandit (`-ll`, 0 HIGH), secrets-скан (gitleaks), coverage ≥ 80%, модульность (`scripts/check_modularity.py`) |
+
+В CI запускаются только unit-тесты (`-m "not live"`), live-тесты — никогда.
+
+Рекомендуется включить branch protection для `main` с required checks
+(`test`, `docker-build`, `security`, `coverage`, `modularity`) и хранить
+секреты `BOT_TOKEN`, `ADMIN_CHAT_ID`, `FLASK_PASSWORD_HASH`, `SECRET_KEY`
+в GitHub Secrets.
 
 ## 🛠 Docker команды
 
