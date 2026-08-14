@@ -23,6 +23,7 @@ known-first-party = ["app", "admin"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "live: тесты, требующие сеть/реальные API (не блокируют обычный прогон)",
 ]

@@ -32,6 +32,10 @@ Telegram-бот фитнес-тренера с формой записи на п
     │   └── database.db
     ├── media/
     ├── templates/
+    ├── tests/
+    │   ├── conftest.py
+    │   ├── unit/          # unit-тесты (validators, database, trial, web, ...)
+    │   └── live/          # live-тесты Telegram API (@pytest.mark.live)
     ├── .env
     ├── docker-compose.yml
     ├── Dockerfile
@@ -101,6 +105,19 @@ Telegram-бот фитнес-тренера с формой записи на п
 | new | 🆕 Новая заявка |
 | in_progress | ⏳ В работе |
 | done | ✅ Завершена |
+
+## 🧪 Тесты
+
+    # Быстрый прогон (unit-тесты, без сети)
+    pytest
+
+    # С coverage-гейтом (>=80%)
+    pytest --cov --cov-fail-under=80
+
+Live-тесты, требующие реальный Telegram API, помечены `@pytest.mark.live`
+и по умолчанию пропускаются. Запуск только вручную:
+
+    RUN_LIVE_TESTS=1 pytest -m live
 
 ## 🛠 Docker команды
 
