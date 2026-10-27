@@ -312,3 +312,35 @@
 - `pull-requests: read` не добавлен: gitleaks-action проверяется после запуска в CI; при необходимости право будет добавлено отдельным коммитом.
 - `fetch-depth: 0` добавлен только в checkout job `security`, чтобы gitleaks видел полную историю; остальные checkout не менялись.
 - Триггеры, шаги ruff/bandit/coverage/modularity и закреплённые версии не изменялись.
+
+## F7: Честная документация (ИИ, демо, ограничения, LICENSE)
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| README: раздел «Как сделан проект» | VERIFIED | `grep "Как сделан" README.md` | `## Как сделан проект`; раскрыты ИИ-инструменты, самопроверка, демо-прототип |
+| README: раздел «Демо-доступ» | VERIFIED | `grep "Демо-доступ" README.md` | `## Демо-доступ`; `admin` / `admin123`, ограничения HTTP/Flask/данных |
+| README: Быстрый старт обновлён | VERIFIED | `grep "ВАШ_IP" README.md` | нет; локально `http://localhost:5004`, для демо `.env`: `ADMIN_BIND=0.0.0.0`, `DEMO_MODE=true`, `SESSION_COOKIE_SECURE=False` |
+| SECURITY.md: раздел «Демо-режим» | VERIFIED | `grep "Демо-режим" SECURITY.md` | `## Демо-режим и известные ограничения`; 4 ограничения + поведение cookie |
+| TECH_DEBT.md: решение по TLS | VERIFIED | `grep "2026-10-27" TECH_DEBT.md` | `- Решение владельца 2026-10-27: TLS для демо-экземпляра не добавляется; админка не используется с реальными данными.` |
+| README: CI-раздел обновлён | VERIFIED | `grep "GitHub Secrets" README.md` | нет; required checks — плейсхолдер (F0.4 NOT VERIFIED), «Restrict updates» выключить |
+| README: тесты (измеренные числа) | VERIFIED | `grep "159 passed" README.md` | `10 test files, 116 test functions; 159 passed, 0 failed, покрытие 95.76%` |
+| ACCEPTANCE_REPORT.md: шапка | VERIFIED | `head -5 ACCEPTANCE_REPORT.md` | блок «Историческая запись от 2026-08-14 (ИИ-самопроверка)» перед заголовком |
+| Ссылки на стандарт заменены | VERIFIED | `grep -rn "UPTIME_STUDIO" .` | нет (до: ACCEPTANCE_REPORT.md:5, SECURITY.md:5, ARCHITECTURE.md:5) |
+| LICENSE создан | VERIFIED | `cat LICENSE` | MIT License, `Copyright (c) 2026 alex-yorik` |
+| ARCHITECTURE.md проверен | VERIFIED | `grep -n "UPTIME_STUDIO\|ai_assistant\|admin/admin.py" ARCHITECTURE.md` | устаревших утверждений и ссылок на удалённые файлы нет; заменена только строка про стандарт |
+| grep запрещённых формулировок | VERIFIED | `grep -rniE "production-ready\|independent audit\|written by me\|автор(ом)? написал\|независимый аудит\|production ready" README.md *.md` | единственное совпадение — обязательная честная формулировка «а не независимый аудит» (F7.1); остального нет |
+| compileall | VERIFIED | `python3 -m compileall -q app admin scripts tests` | exit 0 |
+| ruff check | VERIFIED | `ruff check .` | `All checks passed!`, 0 ошибок |
+| ruff format | VERIFIED | `ruff format --check .` | `37 files already formatted` |
+| bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только WARNING про существующий `nosec B104`) |
+| modularity | VERIFIED | `python3 scripts/check_modularity.py .` | `Модульность в порядке: проверено 27 файлов` |
+| pytest | VERIFIED | `pytest tests/unit -m "not live" --cov --cov-fail-under=80` | `159 passed`, coverage `95.76%` |
+| git status | VERIFIED | `git status --short` | изменены только allowed files F7 (плюс ранее существовавшие `AGENTS.md` и untracked артефакты); `.env`, `data/`, `logs/`, `media/`, `*.db`, `__pycache__` не в индексе |
+
+### Примечания F7
+- В ТЗ указано «106 test functions», фактически измерено **116** (`grep -rh "def test_" tests/unit/*.py | wc -l`); в README и отчёте записано фактическое число 116, чтобы не публиковать неверную цифру. Число `159 passed` — результат полного прогона (параметризация даёт больше кейсов, чем функций).
+- Содержимое LICENSE в ТЗ было не указано (обрезано после «со следующим содержимым:»). По решению D4 (правообладатель `alex-yorik`) выбран стандартный **MIT**; при необходимости владелец может заменить текст.
+- `ACCEPTANCE_REPORT.md` изменён только добавлением шапки и заменой строки про стандарт; исторические цифры внутри (148 passed и т.п.) не менялись.
+- `ARCHITECTURE.md`: устаревших утверждений не найдено; изменена только строка со ссылкой на стандарт.
+- `pull-requests: read` и production-WSGI не добавлялись (D6); живой адрес демо-админки в README не указан (D5).
