@@ -75,3 +75,33 @@
 - Это реальный дефект установки с чистого клона, а не следствие обхода конфликта портов.
 
 **Итог F0.3: FAILED.** Согласно ограничениям, дальнейший hardening остановлен до исправления (правки кода в рамках F0.3 не выполнялись).
+
+## F0.4: GitHub Actions
+
+Проверка статуса workflows через `gh` невозможна: CLI установлен, но не авторизован.
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| gh run list | NOT VERIFIED | gh run list --repo alex-yorik/fitness-coach-bot --limit 10 | `To get started with GitHub CLI, please run: gh auth login` (exit 4) |
+
+### Примечание
+`gh` CLI не авторизован. Владелец проверит статус workflows CI и Quality Gates на `main` через GitHub UI. Записать точные имена проверок (поле `name:` в jobs) для F7.
+
+## F0.5: Секреты в истории
+
+Метод: `gitleaks detect` по всей истории, поиск `.env`/`*.db`/`*.pem` в истории, проверка tracked-файлов на артефакты.
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| gitleaks | VERIFIED | gitleaks detect --source . --log-opts="--all" --redact -v | 48 commits scanned, ~1.67 MB, `no leaks found` (exit 0) |
+| .env в истории | VERIFIED | git log --all --oneline -- .env | пусто (файл никогда не коммитился) |
+| *.db в истории | VERIFIED | git log --all --oneline -- '*.db' | пусто |
+| *.pem в истории | VERIFIED | git log --all --oneline -- '*.pem' | пусто |
+| tracked файлы | VERIFIED | git ls-files \| grep -E "\.(pyc\|db\|log)$\|^(data\|logs\|media)/" | совпадений нет (exit 1) |
+
+### Примечания
+- Реальных секретов (BOT_TOKEN и т.п.) в истории не найдено.
+- `.opencode/project.json` отслеживается и содержит тестовые креды `admin / admin123` (появляются в истории коммитами `4b4f76e`, `d69f276`). `gitleaks` их как утечку не классифицировал (не секрет известного формата); это известная проблема, устраняется в F1 (удаление из индекса).
+- Отзыв токена в BotFather не требуется.
