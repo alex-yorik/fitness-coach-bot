@@ -12,7 +12,7 @@
 | Актив | Где находится | Почему ценен |
 |---|---|---|
 | `BOT_TOKEN` | `.env`, не в git | полный контроль над ботом |
-| Пароль админки | `.env` как hmac/sha256-хеш | доступ к данным заявок |
+| Пароль админки | `.env` как PBKDF2-хеш | доступ к данным заявок |
 | БД заявок | `data/database.db` | персональные данные клиентов (имя, возраст, контакт) |
 | `SECRET_KEY` | `.env` | подпись сессий и CSRF-токенов |
 | Список заявок в Telegram-уведомлениях | чат администратора | конфиденциальность |
@@ -32,8 +32,9 @@
 
 - Ноль хардкода: токены/пароли/ключи только через переменные окружения
   (`app/config.py`, `admin/web.py`).
-- Пароль админки хранится только как `hmac.new(SECRET_KEY, password, sha256)`
-  хеш (`FLASK_PASSWORD_HASH`) — не в открытом виде.
+- Пароль админки хранится как PBKDF2-HMAC-SHA256 с солью и 600 000 итераций
+  (`FLASK_PASSWORD_HASH`, формат без символа `$`, совместимый с docker-compose
+  `env_file`) — не в открытом виде.
 - `.env` и `.git` исключены из Docker-образа (`.dockerignore`) и из репозитория
   (`.gitignore`).
 - В CI выполняется secrets-скан (`gitleaks`), при утечке секрета workflow падает.
@@ -43,7 +44,7 @@
 ### Веб-админка (Flask, порт 5004)
 
 - **Аутентификация** — `login_required`, сравнение пароля через
-  `hmac.compare_digest` (timing-safe, `admin/web.py::password_matches`).
+  `hmac.compare_digest` (timing-safe, `admin/passwords.py::verify_password`).
 - **Rate-limit** — `flask-limiter`: не более **5 POST на `/login` в минуту** на IP
   (`@limiter.limit("5 per minute", methods=["POST"])`).
 - **Сессия** — cookie `HttpOnly`, `SameSite=Lax`, `Secure` по умолчанию

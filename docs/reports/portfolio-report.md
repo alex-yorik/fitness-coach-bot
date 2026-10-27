@@ -228,3 +228,35 @@
 - `DEMO_MODE` читается при импорте модуля; в тестах вместо `monkeypatch.setenv` используется `monkeypatch.setattr(web, "DEMO_MODE", ...)`, так как контекст-процессор читает глобальную переменную модуля на каждом запросе. Это не меняет поведение приложения.
 - Тесты `/update_status` адаптированы под существующий контракт (form-data + CSRF, ответ 302 при успехе): неверный статус возвращает 400, корректные — сохраняются в БД. JSON-контракт не вводился, поведение CSRF/входа/лимита/экспорта не изменялось.
 - Проверка статуса выполняется до открытия соединения с БД и записи.
+
+## F4: PBKDF2 вместо HMAC для пароля админки
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| admin/passwords.py создан | VERIFIED | `cat admin/passwords.py` | формат `pbkdf2_sha256:<iterations>:<salt_hex>:<hash_hex>`, `hash_password` / `verify_password` / CLI `main` |
+| hash_password работает | VERIFIED | `printf 'test123\ntest123\n' \| python -m admin.passwords` | `FLASK_PASSWORD_HASH=pbkdf2_sha256:600000:<salt_hex>:<hash_hex>` |
+| verify_password работает | VERIFIED | `pytest -k test_hash_verify` | 1 passed (roundtrip) |
+| admin/web.py обновлён | VERIFIED | `grep verify_password admin/web.py` | `15:from admin.passwords import verify_password`, `70:return verify_password(password, stored)` |
+| Проверка формата при старте | VERIFIED | `grep RuntimeError admin/web.py` | строки 46–50: при непустом `_stored_hash` и отсутствии префикса `pbkdf2_sha256:` — `RuntimeError` с командой генерации |
+| Старый HMAC удалён | VERIFIED | `grep -i hmac admin/web.py` | остался только `import hmac` + `hmac.compare_digest` для CSRF; HMAC-хеширования пароля нет |
+| tests/unit/test_passwords.py | VERIFIED | `pytest tests/unit/test_passwords.py` | 7 passed |
+| tests/unit/test_web.py обновлён | VERIFIED | `grep hash_password tests/unit/test_web.py` | `9:from admin.passwords import hash_password`, `13:os.environ["FLASK_PASSWORD_HASH"] = hash_password(TEST_PASSWORD, iterations=1000)` |
+| README обновлён | VERIFIED | `grep "python -m admin.passwords" README.md` | шаг генерации и раздел миграции используют CLI; пример `pbkdf2_sha256:600000:<salt_hex>:<hash_hex>` |
+| .env.example обновлён | VERIFIED | `grep FLASK_PASSWORD_HASH .env.example` | `FLASK_PASSWORD_HASH=CHANGE_ME` + комментарий PBKDF2-HMAC-SHA256 / 600 000 итераций |
+| SECURITY.md обновлён | VERIFIED | `grep PBKDF2 SECURITY.md` | «PBKDF2-HMAC-SHA256 с солью и 600 000 итераций … формат без символа `$`»; проверка — `admin/passwords.py::verify_password` |
+| Вход в контейнере | VERIFIED | `curl -X POST http://localhost:5004/login -d "username=admin&password=admin123"` | `status=302 redirect=http://localhost:5004/` |
+| compileall | VERIFIED | `python -m compileall -q app admin scripts tests` | exit 0 |
+| ruff check | VERIFIED | `ruff check .` | `All checks passed!` |
+| ruff format | VERIFIED | `ruff format --check .` | `37 files already formatted` |
+| bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только WARNING про существующий `nosec B104`) |
+| modularity | VERIFIED | `python scripts/check_modularity.py .` | `Модульность в порядке: проверено 27 файлов` |
+| pytest | VERIFIED | `pytest tests/unit -m "not live" --cov --cov-fail-under=80` | `159 passed`, coverage `95.76%` |
+| git status | VERIFIED | `git status --short` | изменены только allowed files F4 (плюс ранее существовавшие `AGENTS.md` и untracked артефакты) |
+
+### Примечания F4
+- `tests/conftest.py` не входит в allowed files, поэтому формирование `FLASK_PASSWORD_HASH` через старый HMAC осталось в conftest, но переопределяется в начале `tests/unit/test_web.py` через `hash_password(...)` **до** импорта `admin.web`. Импорт `admin.web` выполнен через `importlib.import_module`, чтобы не нарушать E402. Поскольку другие тесты `admin.web` не импортируют, это не влияет на остальной набор.
+- **Тесты изменены, т.к. ТЗ F4 прямо отменяет старый HMAC-формат пароля.** Это относится к `tests/unit/test_web.py` (формирование тестового хеша) и новому `tests/unit/test_passwords.py`.
+- F4.5 выполнялся на реальном `.env` проекта: хеш `admin123` записан в локальный `.env` (файл в `.gitignore`, в коммит не попадает), `docker compose up -d --build` поднял оба контейнера, вход вернул 302. После проверки контейнеры остановлены (`docker compose down`). Для демо-стенда пароль `admin123` слабый — рекомендуется сгенерировать новый через `python -m admin.passwords` и заменить `FLASK_PASSWORD_HASH`.
+- `SECRET_KEY` по-прежнему используется только для подписи сессий и CSRF; его проверка и использование не менялись.
+- CLI при неинтерактивном stdin печатает `GetPassWarning` (нет TTY) — это штатное поведение `getpass`, на генерацию хеша не влияет.

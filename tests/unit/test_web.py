@@ -1,3 +1,4 @@
+import importlib
 import io
 import os
 import sqlite3
@@ -5,10 +6,13 @@ import sqlite3
 import openpyxl
 import pytest
 
-import admin.web as web
+from admin.passwords import hash_password
 
 TEST_USERNAME = os.environ["FLASK_USERNAME"]
 TEST_PASSWORD = "test-admin-password"
+os.environ["FLASK_PASSWORD_HASH"] = hash_password(TEST_PASSWORD, iterations=1000)
+
+web = importlib.import_module("admin.web")
 
 CREATE_APPLICATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS applications (

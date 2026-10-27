@@ -1,4 +1,3 @@
-import hashlib
 import hmac
 import io
 import os
@@ -13,6 +12,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from admin.passwords import verify_password
 from app.logging_config import WEB_LOG_PATH, get_logger, setup_logging
 
 ALLOWED_STATUSES = {"new", "in_progress", "done"}
@@ -43,6 +43,12 @@ if not FLASK_USERNAME or not FLASK_PASSWORD_HASH:
     raise RuntimeError("FLASK_USERNAME/FLASK_PASSWORD_HASH not set in .env")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/data/database.db")
 
+_stored_hash = os.environ.get("FLASK_PASSWORD_HASH", "")
+if _stored_hash and not _stored_hash.startswith("pbkdf2_sha256:"):
+    raise RuntimeError(
+        "Неверный формат FLASK_PASSWORD_HASH. Сгенерируйте новый хеш: python -m admin.passwords"
+    )
+
 
 @app.context_processor
 def inject_demo_mode():
@@ -58,8 +64,10 @@ def get_connection():
 
 
 def password_matches(password: str) -> bool:
-    digest = hmac.new(SECRET_KEY.encode(), password.encode(), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(digest, FLASK_PASSWORD_HASH)
+    stored = os.environ.get("FLASK_PASSWORD_HASH", "")
+    if not stored:
+        return False
+    return verify_password(password, stored)
 
 
 def get_csrf_token() -> str:

@@ -27,7 +27,7 @@ Telegram-бот фитнес-тренера с формой записи на п
 
        # Веб-админка
        FLASK_USERNAME=admin
-       # хеш пароля: hmac.new(SECRET_KEY, пароль, sha256)
+       # хеш пароля: PBKDF2-HMAC-SHA256 (600 000 итераций)
        FLASK_PASSWORD_HASH=<сгенерировать, см. ниже>
        SECRET_KEY=<случайный_64-символьный_hex>
 
@@ -40,10 +40,13 @@ Telegram-бот фитнес-тренера с формой записи на п
        WEB_LOG_PATH=/app/logs/web.log
        HEALTH_PORT=8001
 
-3. Сгенерировать хеш пароля админки (пароль хранится только в виде хеша,
-   привязанного к `SECRET_KEY`):
+3. Сгенерировать хеш пароля админки (пароль хранится только в виде хеша):
 
-       python3 -c "from dotenv import load_dotenv; load_dotenv(); import hmac,hashlib,os; print(hmac.new(os.environ['SECRET_KEY'].encode(), b'ваш_пароль', hashlib.sha256).hexdigest())"
+       python3 -m admin.passwords
+
+   Пример вывода:
+
+       FLASK_PASSWORD_HASH=pbkdf2_sha256:600000:<salt_hex>:<hash_hex>
 
    Вывод записать в `FLASK_PASSWORD_HASH`.
 
@@ -65,9 +68,9 @@ Telegram-бот фитнес-тренера с формой записи на п
 ## 🔐 Миграция с открытого пароля
 
 Если в `.env` ещё остался `FLASK_PASSWORD` в открытом виде, сгенерируйте хеш
-из него и удалите ключ:
+нового пароля и удалите ключ:
 
-    python3 -c "from dotenv import load_dotenv; load_dotenv(); import hmac,hashlib,os; print(hmac.new(os.environ['SECRET_KEY'].encode(), os.environ['FLASK_PASSWORD'].encode(), hashlib.sha256).hexdigest())"
+    python3 -m admin.passwords
 
 Затем в `.env`: `FLASK_PASSWORD_HASH=<вывод>` и удалить строку `FLASK_PASSWORD=...`.
 
