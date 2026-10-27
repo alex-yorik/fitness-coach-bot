@@ -288,3 +288,27 @@
 - Тесты не изменялись: ни один из `test_content_loader.py`, `test_trial.py`, `test_validators.py` не сравнивает точный текст `welcome.text` (используются синтетические фикстуры), все проходят.
 - F5.2 пропущен по решению владельца D2 (скрипт очистки демо-заявок не нужен).
 - Добавление предупреждения увеличивает `welcome.text` до 277 символов; валидатор контента таких полей не ограничивает, на отправку сообщения Telegram (лимит 4096) влияния нет.
+
+## F6: CI permissions и fetch-depth для gitleaks
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| ci.yml: permissions | VERIFIED | `grep permissions .github/workflows/ci.yml` | `3:permissions:`, `contents: read` |
+| quality-gates.yml: permissions | VERIFIED | `grep permissions .github/workflows/quality-gates.yml` | `3:permissions:`, `contents: read` |
+| security: fetch-depth: 0 | VERIFIED | `grep fetch-depth .github/workflows/quality-gates.yml` | `20:          fetch-depth: 0` (шаг checkout в job `security`) |
+| py_compile не ссылается на удалённые | VERIFIED | `grep -n "ai_assistant\|admin/admin" .github/workflows/ci.yml` | пусто (exit 1) |
+| YAML-синтаксис ci.yml | VERIFIED | `python3 -c "yaml.safe_load(...)"` | exit 0 |
+| YAML-синтаксис quality-gates.yml | VERIFIED | `python3 -c "yaml.safe_load(...)"` | exit 0 |
+| compileall | VERIFIED | `python3 -m compileall -q app admin scripts tests` | exit 0 |
+| ruff check | VERIFIED | `ruff check .` | `All checks passed!`, 0 ошибок |
+| ruff format | VERIFIED | `ruff format --check .` | `37 files already formatted` |
+| bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только WARNING про существующий `nosec B104`) |
+| modularity | VERIFIED | `python3 scripts/check_modularity.py .` | `Модульность в порядке: проверено 27 файлов` |
+| git status | VERIFIED | `git status --short` | изменены только allowed files F6 (плюс ранее существовавшие `AGENTS.md` и untracked артефакты) |
+
+### Примечания F6
+- `permissions` заданы на уровне workflow (не job), чтобы минимальные права `contents: read` применялись ко всем job'ам обоих файлов.
+- `pull-requests: read` не добавлен: gitleaks-action проверяется после запуска в CI; при необходимости право будет добавлено отдельным коммитом.
+- `fetch-depth: 0` добавлен только в checkout job `security`, чтобы gitleaks видел полную историю; остальные checkout не менялись.
+- Триггеры, шаги ruff/bandit/coverage/modularity и закреплённые версии не изменялись.
