@@ -260,3 +260,7 @@ Live-тесты, требующие реальный Telegram API, помече�
 | 👤 Логин | `admin` (из `.env`) |
 | 🔑 Пароль | хеш (см. `FLASK_PASSWORD_HASH`) |
 | 🗄 БД | `/app/data/database.db` (volume `./data`) |
+
+## 📄 Лицензия
+
+All rights reserved. Проект опубликован для портфолио и оценки; условия использования — в файле [LICENSE](LICENSE).

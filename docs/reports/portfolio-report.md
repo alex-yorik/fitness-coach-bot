@@ -327,7 +327,7 @@
 | README: тесты (измеренные числа) | VERIFIED | `grep "159 passed" README.md` | `10 test files, 116 test functions; 159 passed, 0 failed, покрытие 95.76%` |
 | ACCEPTANCE_REPORT.md: шапка | VERIFIED | `head -5 ACCEPTANCE_REPORT.md` | блок «Историческая запись от 2026-08-14 (ИИ-самопроверка)» перед заголовком |
 | Ссылки на стандарт заменены | VERIFIED | `grep -rn "UPTIME_STUDIO" .` | нет (до: ACCEPTANCE_REPORT.md:5, SECURITY.md:5, ARCHITECTURE.md:5) |
-| LICENSE создан | VERIFIED | `cat LICENSE` | MIT License, `Copyright (c) 2026 alex-yorik` |
+| LICENSE: All rights reserved (F7-fix) | VERIFIED | `cat LICENSE`; `grep -rniE "\bMIT\b" .` | proprietary |
 | ARCHITECTURE.md проверен | VERIFIED | `grep -n "UPTIME_STUDIO\|ai_assistant\|admin/admin.py" ARCHITECTURE.md` | устаревших утверждений и ссылок на удалённые файлы нет; заменена только строка про стандарт |
 | grep запрещённых формулировок | VERIFIED | `grep -rniE "production-ready\|independent audit\|written by me\|автор(ом)? написал\|независимый аудит\|production ready" README.md *.md` | единственное совпадение — обязательная честная формулировка «а не независимый аудит» (F7.1); остального нет |
 | compileall | VERIFIED | `python3 -m compileall -q app admin scripts tests` | exit 0 |
@@ -340,7 +340,11 @@
 
 ### Примечания F7
 - В ТЗ указано «106 test functions», фактически измерено **116** (`grep -rh "def test_" tests/unit/*.py | wc -l`); в README и отчёте записано фактическое число 116, чтобы не публиковать неверную цифру. Число `159 passed` — результат полного прогона (параметризация даёт больше кейсов, чем функций).
-- Содержимое LICENSE в ТЗ было не указано (обрезано после «со следующим содержимым:»). По решению D4 (правообладатель `alex-yorik`) выбран стандартный **MIT**; при необходимости владелец может заменить текст.
+- LICENSE оформлен как proprietary («All rights reserved», правообладатель `alex-yorik`) согласно решению D4. Исходный MIT из F7 исправлен в F7-fix.
 - `ACCEPTANCE_REPORT.md` изменён только добавлением шапки и заменой строки про стандарт; исторические цифры внутри (148 passed и т.п.) не менялись.
 - `ARCHITECTURE.md`: устаревших утверждений не найдено; изменена только строка со ссылкой на стандарт.
 - `pull-requests: read` и production-WSGI не добавлялись (D6); живой адрес демо-админки в README не указан (D5).
+
+## Отклонения от ТЗ
+
+- F7 (7e7be85) создал LICENSE с MIT вопреки D4; исправлено в F7-fix.
