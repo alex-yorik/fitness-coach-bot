@@ -260,3 +260,31 @@
 - F4.5 выполнялся на реальном `.env` проекта: хеш `admin123` записан в локальный `.env` (файл в `.gitignore`, в коммит не попадает), `docker compose up -d --build` поднял оба контейнера, вход вернул 302. После проверки контейнеры остановлены (`docker compose down`). Для демо-стенда пароль `admin123` слабый — рекомендуется сгенерировать новый через `python -m admin.passwords` и заменить `FLASK_PASSWORD_HASH`.
 - `SECRET_KEY` по-прежнему используется только для подписи сессий и CSRF; его проверка и использование не менялись.
 - CLI при неинтерактивном stdin печатает `GetPassWarning` (нет TTY) — это штатное поведение `getpass`, на генерацию хеша не влияет.
+
+## F5: Безопасность демо-данных (F5.1; F5.2 пропущен по D2)
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| content/fitness_coach.json прочитан | VERIFIED | `cat content/fitness_coach.json` | структура: name, profession, welcome, about, formats, trial, ui, gallery |
+| Ограничения валидатора | VERIFIED | `grep -n "max\|length\|len" app/validators.py` | контент не ограничен по длине; лимиты только для ввода пользователя: `text` 2–200 символов, `phone` 7–15 цифр, `age` 1–100, `contact` минимум 4 символа |
+| Предупреждение добавлено | VERIFIED | `grep -n "демо-бот" content/fitness_coach.json` | строка 6: «Это демо-бот. Не вводите реальные персональные данные: используйте вымышленные имя и контакт.» в конце `welcome.text` |
+| JSON валиден | VERIFIED | `python -c "import json; json.load(open('content/fitness_coach.json'))"` | exit 0 |
+| Длина текста в лимите | VERIFIED | `python -c "len(v)"` по всем текстовым полям | `welcome.text` = 277 символов; лимита на контент нет, ограничение 200 относится к ответу пользователя |
+| F5.2 пропущен | VERIFIED | решение владельца D2 | скрипт очистки демо-заявок не нужен |
+| test_content_loader.py | VERIFIED | `pytest tests/unit/test_content_loader.py -v` | passed (в составе общего прогона; точных сравнений с текстом `welcome` нет) |
+| test_trial.py | VERIFIED | `pytest tests/unit/test_trial.py -v` | passed |
+| test_validators.py | VERIFIED | `pytest tests/unit/test_validators.py -v` | passed |
+| compileall | VERIFIED | `python -m compileall -q app admin scripts tests` | exit 0 |
+| ruff check | VERIFIED | `ruff check .` | `All checks passed!`, 0 ошибок |
+| ruff format | VERIFIED | `ruff format --check .` | `37 files already formatted` |
+| bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только WARNING про существующий `nosec B104`) |
+| modularity | VERIFIED | `python scripts/check_modularity.py .` | `Модульность в порядке: проверено 27 файлов` |
+| pytest | VERIFIED | `pytest tests/unit -m "not live" --cov --cov-fail-under=80` | `159 passed`, coverage `95.76%` |
+| git status | VERIFIED | `git status --short` | изменены только allowed files F5 (плюс ранее существовавшие `AGENTS.md` и untracked артефакты) |
+
+### Примечания F5
+- Предупреждение добавлено в конец `welcome.text` с разделителем `\n\n` — это наименее инвазивное место: текст показывается при `/start`, структура JSON и обработчики не менялись.
+- Тесты не изменялись: ни один из `test_content_loader.py`, `test_trial.py`, `test_validators.py` не сравнивает точный текст `welcome.text` (используются синтетические фикстуры), все проходят.
+- F5.2 пропущен по решению владельца D2 (скрипт очистки демо-заявок не нужен).
+- Добавление предупреждения увеличивает `welcome.text` до 277 символов; валидатор контента таких полей не ограничивает, на отправку сообщения Telegram (лимит 4096) влияния нет.
