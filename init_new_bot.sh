@@ -20,7 +20,7 @@ if [ -z "$TEMPLATE" ] || [ -z "$CLIENT_NAME" ]; then
     echo "❌ Ошибка: нужно передать оба аргумента."
     echo ""
     echo "Пример:"
-    echo "./init_new_bot.sh --template=fitness --name=ivan"
+    echo "./init_new_bot.sh --template=beauty --name=ivan"
     exit 1
 fi
 

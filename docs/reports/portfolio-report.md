@@ -151,3 +151,31 @@
 - `backup.sh` функционально рабочий только через env (`DB_PATH`, `BACKUP_DIR`); вызов с путём БД аргументом молча бэкапит production-БД. Это вводит в заблуждение (исправить в F1/F2).
 - `init_new_bot.sh` не работает вне корня проекта и ссылается на несуществующий `fitness`; успешный сценарий не проверялся, чтобы не копировать в репозиторий `data/`, `backups/`, `.env`.
 - Код проекта не изменялся; в рамках F0.6/F0.7 изменён только данный отчёт.
+
+## F1: Чистка репозитория + удаление реального ФИО
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| Ссылки на `ai_assistant` | VERIFIED | `git grep -n "ai_assistant" -- . ':!graphify-out'` | единственное совпадение — `.github/workflows/ci.yml:38`; удалено |
+| Ссылки на `admin.admin` | VERIFIED | `git grep -n "admin.admin\|from admin import admin"` | совпадений в отслеживаемых файлах нет (exit 1); только сгенерированные `graphify-out/` и `__pycache__` |
+| `.opencode/project.json` удалён из индекса | VERIFIED | `git rm --cached .opencode/project.json` | `rm '.opencode/project.json'` |
+| `.opencode/` в `.gitignore` | VERIFIED | `grep -q "^\.opencode/" .gitignore` | добавлена строка `.opencode/` |
+| `.opencode/` в `.dockerignore` | VERIFIED | `grep -q "^\.opencode/" .dockerignore` | добавлена строка `.opencode/` |
+| `ai_assistant.py` удалён | VERIFIED | `git rm --cached ai_assistant.py` + `rm` | файл отсутствует на диске и в индексе |
+| `admin/admin.py` удалён | VERIFIED | `git rm --cached admin/admin.py` + `rm` | файл отсутствует на диске и в индексе |
+| `init_new_bot.sh` исправлен | VERIFIED | `sed -i 's/--template=fitness/--template=beauty/g'` | usage: `--template=beauty`; логика не менялась |
+| `CHANGELOG.md:27` заменено | VERIFIED | `sed -i 's/Елены Янаковой/Алексея Смирнова/'` | было «Елены Янаковой», стало «Алексея Смирнова» (падеж сохранён); `grep "Янаков\|Елен"` — пусто |
+| `git ls-files` проверка | VERIFIED | `git ls-files \| grep -E "opencode\|ai_assistant\|admin/admin.py"` | пусто (exit 1) |
+| compileall | VERIFIED | `python3 -m compileall -q app admin scripts tests` | exit 0 |
+| ruff check | VERIFIED | `ruff check .` | `All checks passed!` (exit 0) |
+| ruff format | VERIFIED | `ruff format --check .` | `35 files already formatted` (exit 0) |
+| bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только информационный WARNING про существующий `nosec B104`) |
+| modularity | VERIFIED | `python3 scripts/check_modularity.py .` | `Модульность в порядке: проверено 25 файлов` |
+| pytest | VERIFIED | `python3 -m pytest tests/unit -m "not live" --cov --cov-fail-under=80` | `148 passed`, coverage `95.76%` (exit 0) |
+| git status | VERIFIED | `git status --short` | `.env`, `data/`, `logs/`, `media/`, `*.db`, `__pycache__` отсутствуют |
+
+### Примечания F1
+- F1.6: в `CHANGELOG.md:27` фактическая формулировка была «…контентом Елены Янаковой» (родительный падеж), поэтому замена выполнена на «…контентом Алексея Смирнова» — смысл и грамматика сохранены, реальное ФИО удалено.
+- В рабочем дереве до начала F1 оставались незакоммиченные изменения вне allowed files (`AGENTS.md`, `docker-compose.yml`, `.gitattributes`, `.graphifyignore`, `.opencode/opencode.json`, `.opencode/plugins/`, `graphify-out/`). Они не входят в F1 и в коммит не включены.
+- Сгенерированные `graphify-out/` и `__pycache__` содержат упоминания удалённых файлов; это артефакты, не отслеживаемые git, на код не влияют.
