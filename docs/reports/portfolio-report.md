@@ -179,3 +179,24 @@
 - F1.6: в `CHANGELOG.md:27` фактическая формулировка была «…контентом Елены Янаковой» (родительный падеж), поэтому замена выполнена на «…контентом Алексея Смирнова» — смысл и грамматика сохранены, реальное ФИО удалено.
 - В рабочем дереве до начала F1 оставались незакоммиченные изменения вне allowed files (`AGENTS.md`, `docker-compose.yml`, `.gitattributes`, `.graphifyignore`, `.opencode/opencode.json`, `.opencode/plugins/`, `graphify-out/`). Они не входят в F1 и в коммит не включены.
 - Сгенерированные `graphify-out/` и `__pycache__` содержат упоминания удалённых файлов; это артефакты, не отслеживаемые git, на код не влияют.
+
+## F2: Docker безопасные значения по умолчанию + права на каталоги
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| version удалён | VERIFIED | `grep -n '^version:' docker-compose.yml` | нет совпадений (exit 1) |
+| порт бота 127.0.0.1:8001 | VERIFIED | `docker compose config` | `host_ip: 127.0.0.1`, `target: 8001`, `published: "8001"` |
+| порт админки ADMIN_BIND | VERIFIED | `docker compose config` | по умолчанию `host_ip: 127.0.0.1`, при `ADMIN_BIND=0.0.0.0` — `host_ip: 0.0.0.0`; `target/published: 5004` |
+| .env.example: ADMIN_BIND | VERIFIED | `grep ADMIN_BIND .env.example` | `ADMIN_BIND=127.0.0.1` + комментарий о 0.0.0.0 только за reverse-proxy/TLS |
+| .env.example: DEMO_MODE | VERIFIED | `grep DEMO_MODE .env.example` | `DEMO_MODE=False` + пометка, что текущий код переменную не читает |
+| .env.example: SESSION_COOKIE_SECURE | VERIFIED | `grep -A2 SESSION_COOKIE_SECURE .env.example` | комментарий обновлён: True — HTTPS/localhost, для демо по HTTP с внешнего адреса — False |
+| README: chown шаг | VERIFIED | `grep -n -A2 chown README.md` | шаг перед `docker-compose up`: `mkdir -p data logs media` + `sudo chown -R 10001:10001 data logs media` |
+| docker compose config -q | VERIFIED | `docker compose config -q` | exit 0 |
+| ADMIN_BIND=0.0.0.0 | VERIFIED | `ADMIN_BIND=0.0.0.0 docker compose config` | `host_ip: 0.0.0.0`, `target: 5004`, `published: "5004"` |
+| без ADMIN_BIND | VERIFIED | `docker compose config` | `host_ip: 127.0.0.1`, `target: 5004`, `published: "5004"` |
+
+### Примечания F2
+- `docker-compose.yml` также содержит не входившие в F2, но уже присутствовавшие в рабочем дереве правки (json-file logging с ротацией 10m, healthcheck interval 300s); они включены в коммит F2, так как относятся к тому же файлу.
+- README в разделе Docker дополнен фактическим интервалом healthcheck (300s) и описанием `ADMIN_BIND`.
+- Каталоги `data/`, `logs/`, `media/` на текущем стенде уже принадлежат `10001:10001`; повторный прогон контейнера с чистого клона в рамках F2 не выполнялся (проверялся только `docker compose config`).

@@ -47,11 +47,16 @@ Telegram-бот фитнес-тренера с формой записи на п
 
    Вывод записать в `FLASK_PASSWORD_HASH`.
 
-4. Запустить:
+4. Подготовить каталоги для данных и выдать их пользователю контейнера (uid 10001):
+
+       mkdir -p data logs media
+       sudo chown -R 10001:10001 data logs media
+
+5. Запустить:
 
        docker-compose up -d --build
 
-5. Проверить статус и health:
+6. Проверить статус и health:
 
        docker-compose ps
        curl -f http://localhost:8001/healthz   # бот: 200 ok
@@ -193,10 +198,13 @@ Live-тесты, требующие реальный Telegram API, помече�
 ### Healthcheck
 
 Оба сервиса имеют `healthcheck` в `docker-compose.yml` (curl на `/healthz`,
-интервал 30s, start_period 15s). Health-эндпоинты проверяют доступность БД:
+интервал 300s, start_period 15s). Health-эндпоинты проверяют доступность БД:
 
 - бот: `http://localhost:8001/healthz`
 - админка: `http://localhost:5004/healthz`
+
+По умолчанию оба порта публикуются только на `127.0.0.1`. Для доступа к админке
+снаружи задайте `ADMIN_BIND=0.0.0.0` (только за reverse-proxy с TLS).
 
 ## 📝 Обновление контента
 
