@@ -40,6 +40,11 @@
     <a href="/logout">Выйти</a>
 </div>
 <div class="container">
+    {% if demo_mode %}
+    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; margin-bottom: 16px; border-radius: 4px; color: #856404;">
+        <strong>⚠️ DEMO</strong> — не вводите реальные персональные данные.
+    </div>
+    {% endif %}
     <div class="stats">
         <div class="stat-card"><div class="num">{{ stats.total }}</div><div class="label">Всего</div></div>
         <div class="stat-card"><div class="num" style="color:#1d4ed8">{{ stats.new }}</div><div class="label">🆕 Новых</div></div>

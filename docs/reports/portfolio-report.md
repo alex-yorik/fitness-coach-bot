@@ -200,3 +200,31 @@
 - `docker-compose.yml` также содержит не входившие в F2, но уже присутствовавшие в рабочем дереве правки (json-file logging с ротацией 10m, healthcheck interval 300s); они включены в коммит F2, так как относятся к тому же файлу.
 - README в разделе Docker дополнен фактическим интервалом healthcheck (300s) и описанием `ADMIN_BIND`.
 - Каталоги `data/`, `logs/`, `media/` на текущем стенде уже принадлежат `10001:10001`; повторный прогон контейнера с чистого клона в рамках F2 не выполнялся (проверялся только `docker compose config`).
+
+## F3: Админка — валидация статуса и демо-баннер
+
+### Проверки
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| ALLOWED_STATUSES константа | VERIFIED | `grep ALLOWED_STATUSES admin/web.py` | `18:ALLOWED_STATUSES = {"new", "in_progress", "done"}` |
+| update_status проверка | VERIFIED | `grep -A5 update_status admin/web.py` | проверка `new_status not in ALLOWED_STATUSES` → `jsonify(...), 400` до записи в БД (строки 174–175) |
+| index/export фильтр | VERIFIED | `grep -A5 index/export admin/web.py` | неизвестный `status` заменяется на `""` (строки 138–139 и 252–253) |
+| DEMO_MODE чтение | VERIFIED | `grep DEMO_MODE admin/web.py` | `36:DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")` |
+| context_processor | VERIFIED | `grep context_processor admin/web.py` | `47:@app.context_processor` → `inject_demo_mode()` возвращает `{"demo_mode": DEMO_MODE}` |
+| login.html баннер | VERIFIED | `grep demo_mode admin/templates/login.html` | `23:{% if demo_mode %}` перед полями формы |
+| index.html баннер | VERIFIED | `grep demo_mode admin/templates/index.html` | `43:{% if demo_mode %}` после заголовка, перед статистикой/таблицей |
+| тест неверного статуса | VERIFIED | `pytest -k test_update_status_invalid` | 1 passed; ответ 400, статус в БД остаётся `new` |
+| тест верных статусов | VERIFIED | `pytest -k test_update_status_valid` | 1 passed; `new`, `in_progress`, `done` сохраняются |
+| тест баннера DEMO | VERIFIED | `pytest -k demo_banner` | 2 passed (DEMO_MODE=True → баннер, False → нет баннера) |
+| compileall | VERIFIED | `python -m compileall -q app admin scripts tests` | exit 0 |
+| ruff check | VERIFIED | `ruff check .` | `All checks passed!` |
+| ruff format | VERIFIED | `ruff format --check .` | `35 files already formatted` |
+| bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только WARNING про существующий `nosec B104`) |
+| modularity | VERIFIED | `python scripts/check_modularity.py .` | `Модульность в порядке: проверено 25 файлов` |
+| pytest | VERIFIED | `pytest tests/unit -m "not live" --cov --cov-fail-under=80` | `152 passed`, coverage `95.76%` |
+| git status | VERIFIED | `git status --short` | изменены только allowed files F3 (плюс ранее существовавшие untracked артефакты) |
+
+### Примечания F3
+- `DEMO_MODE` читается при импорте модуля; в тестах вместо `monkeypatch.setenv` используется `monkeypatch.setattr(web, "DEMO_MODE", ...)`, так как контекст-процессор читает глобальную переменную модуля на каждом запросе. Это не меняет поведение приложения.
+- Тесты `/update_status` адаптированы под существующий контракт (form-data + CSRF, ответ 302 при успехе): неверный статус возвращает 400, корректные — сохраняются в БД. JSON-контракт не вводился, поведение CSRF/входа/лимита/экспорта не изменялось.
+- Проверка статуса выполняется до открытия соединения с БД и записи.

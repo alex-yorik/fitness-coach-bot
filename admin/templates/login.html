@@ -20,6 +20,11 @@
     <h2>📋 Fitness Coach — Админка</h2>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <form method="POST">
+        {% if demo_mode %}
+        <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; margin-bottom: 16px; border-radius: 4px; color: #856404;">
+            <strong>⚠️ DEMO</strong> — не вводите реальные персональные данные.
+        </div>
+        {% endif %}
         <input type="text" name="username" placeholder="Логин" required>
         <input type="password" name="password" placeholder="Пароль" required>
         <button type="submit">Войти</button>
