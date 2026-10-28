@@ -457,7 +457,11 @@
 1. **F0.4**: `gh run list` — gh не авторизован (exit 4); статус workflows и точные имена проверок (поле `name:` в jobs) владелец проверяет через GitHub UI.
 2. **F8.1**: healthz бота с фиктивным токеном — NOT VERIFIED, причина ожидаемая (`InvalidToken`); живая проверка стека выполнена в F8.2 (VERIFIED).
 3. **F8.2**: production healthz — N/A: production не запущен по решению владельца (не запущен до теста, оставлен незапущенным).
-4. **F8**: зелёные workflows на ветке PR — ссылки даст владелец после пуша (gh не авторизован).
+4. **F8** (закрыто 2026-10-28): зелёные workflows на ветке PR — CI #7 и Quality Gates #7 (PR #1, synchronize) — 5 successful checks: `Lint, compile and unit tests`, `Docker build`, `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate`. Ссылки на прогоны добавит владелец при желании.
+
+- O1 (расширение ruff до B/UP/C4/SIM): пропущено по решению владельца от 2026-10-28.
+- Артефакты живого теста `/tmp/f8-*` и `/tmp/fitness_coach.before.json` удалены владельцем (подтверждено 2026-10-28); реальный `BOT_TOKEN` в репозиторий и коммиты не попадал (F0.5).
+- Фактические имена проверок для ruleset: `Lint, compile and unit tests`, `Docker build`, `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate`.
 
 ## Отклонения от ТЗ (owner-approved)
 
