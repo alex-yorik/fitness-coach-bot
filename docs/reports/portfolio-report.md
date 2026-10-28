@@ -305,12 +305,23 @@
 | bandit | VERIFIED | `bandit -r app admin -ll -q` | exit 0, 0 findings (только WARNING про существующий `nosec B104`) |
 | modularity | VERIFIED | `python3 scripts/check_modularity.py .` | `Модульность в порядке: проверено 27 файлов` |
 | git status | VERIFIED | `git status --short` | изменены только allowed files F6 (плюс ранее существовавшие `AGENTS.md` и untracked артефакты) |
+| F6-fix: pull-requests: read для job security | VERIFIED | ошибка CI назвала permission: 403 на GET /pulls/1/commits, заголовок x-accepted-github-permissions: pull_requests=read | добавлена только названная permission (ТЗ F6) |
 
 ### Примечания F6
 - `permissions` заданы на уровне workflow (не job), чтобы минимальные права `contents: read` применялись ко всем job'ам обоих файлов.
-- `pull-requests: read` не добавлен: gitleaks-action проверяется после запуска в CI; при необходимости право будет добавлено отдельным коммитом.
+- `pull-requests: read` добавлен на уровне job `security` в F6-fix: без него gitleaks-action получает 403 на `GET /pulls/1/commits` ещё до начала сканирования. Job-level `permissions` переопределяет top-level, поэтому в job повторены обе строки (`contents: read`, `pull-requests: read`).
 - `fetch-depth: 0` добавлен только в checkout job `security`, чтобы gitleaks видел полную историю; остальные checkout не менялись.
 - Триггеры, шаги ruff/bandit/coverage/modularity и закреплённые версии не изменялись.
+- Находок секретов в CI не было ни в одном прогоне; все три причины красных Quality Gates закрыты: nosec B104 (до hardening, задокументирован), fetch-depth: 0 (F6), pull-requests: read (F6-fix).
+
+### История CI на main до hardening (факты из логов, предоставлены владельцем)
+| Прогон | Коммит | Результат |
+|---|---|---|
+| Quality Gates #3 (14 авг) | cadeaff | Bandit exit 1 — B104 Medium в `app/health_server.py:8`; на этом коммите `# nosec B104` ещё не было (добавлен позже, до hardening; оба `nosec` перечислены в отчёте с причинами). Код не менялся. |
+| Quality Gates #4 (14 авг) | e019e36 | gitleaks exit 1 — `fatal: ambiguous argument ... unknown revision` из-за shallow-checkout (`fetch-depth` по умолчанию 1); исправлено в F6 (`fetch-depth: 0`). |
+| Quality Gates #5 (26 авг) | 6bc6c04 | gitleaks exit 1 — та же причина shallow-checkout; исправлено в F6 (`fetch-depth: 0`). |
+| Quality Gates #6 (PR #1) | — | gitleaks 403 до начала сканирования (нет `pull-requests: read`); исправлено в F6-fix. |
+| CI workflow на main | — | зелёный (прогоны CI #3 и #5; это отдельный workflow «CI», не «Quality Gates»). |
 
 ## F7: Честная документация (ИИ, демо, ограничения, LICENSE)
 
