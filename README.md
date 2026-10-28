@@ -195,8 +195,10 @@ Live-тесты, требующие реальный Telegram API, помече�
 В CI запускаются только unit-тесты (`-m "not live"`), live-тесты — никогда.
 
 Рекомендуется включить branch protection для `main` с required checks.
-Точный список проверок будет добавлен владельцем после запуска workflows:
-`[Имена проверок будут уточнены владельцем после запуска workflows]`.
+Фактические имена проверок (выбирать из выпадающего списка):
+- CI: `Lint, compile and unit tests`, `Docker build`
+- Quality Gates: `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate`
+
 В ruleset галочка «Restrict updates» должна быть выключена.
 
 ### 📝 Changelog
