@@ -397,6 +397,16 @@
 | docker build | VERIFIED | docker build -t fitness-coach:ci . | exit 0, образ собран |
 | git status | VERIFIED | git status --short | кроме данного отчёта — только существовавшие до hardening правки (`AGENTS.md`) и untracked-артефакты (см. F0) |
 
+### Финальный статус GitHub (2026-10-28)
+
+- Репозиторий сделан публичным: 2026-10-28.
+- Ruleset `main`: Enforcement status = Active.
+- Обязательные проверки (5): `Lint, compile and unit tests`, `Docker build`, `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate`.
+- Restrict updates: выключен (владелец может мержить).
+- Force-push: запрещён ruleset'ом.
+- Прямые коммиты в `main`: запрещены (только через PR).
+- Закрыто 2026-10-28: репозиторий публичный, ruleset enforce активен.
+
 ### Сводная таблица F0–F8
 
 | Фаза | Статус | Коммит | Ключевые VERIFIED / NOT VERIFIED (команды) |
