@@ -1,5 +1,4 @@
-# Журнал ИИ-assisted инженерных правок
-**Это не независимый аудит**
+# Журнал ИИ-assisted инженерных правок. Это не независимый аудит
 
 Проект: fitness-coach-bot
 Репозиторий: alex-yorik/fitness-coach-bot
@@ -347,12 +346,113 @@
 
 ## F8: Финальная проверка
 
-### Проверки
+### F8-fix: комментарий DEMO_MODE в .env.example (owner-approved)
+
 | Пункт | Статус | Команда | Вывод |
 |---|---|---|---|
-| F8-fix: комментарий DEMO_MODE актуализирован | VERIFIED (owner-approved) | grep DEMO_MODE .env.example | комментарий соответствует коду F3 |
+| Комментарий DEMO_MODE актуализирован | VERIFIED (owner-approved) | grep DEMO_MODE .env.example | комментарий соответствует коду F3 (`admin/web.py` читает переменную; значения 1/true/yes) |
 
-## Отклонения от ТЗ
+### F8.1: healthz бота с фиктивным токеном
 
-- F7 (7e7be85) создал LICENSE с MIT вопреки D4; исправлено в F7-fix.
-- F8-fix: изменён комментарий DEMO_MODE в .env.example вне allowed files фазы F8 (owner-approved). Причина: после F3 код читает эту переменную, старый комментарий вводил в заблуждение.
+Метод: изолированный compose-стек в клоне `/tmp/f8-clean` (см. Отклонение г) с фиктивным токеном бота; реальный токен на этом шаге не использовался.
+
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| healthz бота | NOT VERIFIED (ожидаемо) | curl http://127.0.0.1:18001/healthz | бот не достигает healthy: python-telegram-bot отклоняет фиктивный токен (`InvalidToken`); причина ожидаемая для фиктивного токена, живая проверка выполнена в F8.2 |
+
+### F8.2: Живой тест
+
+Стек: изолированный клон `/tmp/f8-clean` (коммит `fb5c802`; код идентичен HEAD `f698381` — отличие F8-fix только в комментарии `.env.example`, рантайм не затрагивает), override `f8-override.yml`: имена `f8-clean-bot`/`f8-clean-admin`, порты `127.0.0.1:18001`/`127.0.0.1:15004`. Реальный токен задан в локальном `.env` клона (gitignored, в git не попадает — F0.5); `DEMO_MODE=true`, `ADMIN_BIND=127.0.0.1`, `SESSION_COOKIE_SECURE=False`. Заявка отправлена живым Telegram-клиентом с вымышленными данными. Production до теста не запускался и не останавливался (N/A — Отклонение д). Времена: старт стека `2026-10-27T18:30:28Z`, `docker compose down` — `2026-10-27T18:36:06Z`.
+
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| getMe | VERIFIED | Telegram BotAPI `getMe` | HTTP 200 — токен валиден |
+| POST /login | VERIFIED | curl -X POST http://127.0.0.1:15004/login | HTTP 302 → `/` |
+| GET / | VERIFIED | curl http://127.0.0.1:15004/ | HTTP 200; содержит «Тест Тест», «@fake_test_contact» и баннер DEMO |
+| Строка в тестовой БД | VERIFIED | SELECT id, name, contact, status FROM applications | id=1; name=«Тест Тест»; contact=@fake_test_contact; status=new |
+| Логи без конфликтов | VERIFIED | grep -E "409\|conflict\|unauthorized" (логи текущего запуска) | пусто |
+| Стоп/возврат production | N/A | — | production не запущен до теста и оставлен незапущенным (решение владельца) |
+
+### F8.3: Финализация отчёта (этот коммит)
+
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| compileall | VERIFIED | python3 -m compileall -q app admin scripts tests | exit 0 |
+| ruff check | VERIFIED | ruff check . | All checks passed!, 0 ошибок |
+| ruff format | VERIFIED | ruff format --check . | 37 files already formatted |
+| bandit | VERIFIED | bandit -r app admin -ll -q | exit 0, 0 findings (косметическое предупреждение про существующий nosec B104) |
+| модулярность | VERIFIED | python3 scripts/check_modularity.py . | Модульность в порядке: проверено 27 файлов |
+| pytest | VERIFIED | python3 -m pytest tests/unit -m "not live" --cov --cov-fail-under=80 | 159 passed, 0 failed; coverage 95.76% (гейт 80% пройден) |
+| docker build | VERIFIED | docker build -t fitness-coach:ci . | exit 0, образ собран |
+| git status | VERIFIED | git status --short | кроме данного отчёта — только существовавшие до hardening правки (`AGENTS.md`) и untracked-артефакты (см. F0) |
+
+### Сводная таблица F0–F8
+
+| Фаза | Статус | Коммит | Ключевые VERIFIED / NOT VERIFIED (команды) |
+|---|---|---|---|
+| F0.1 Ветка и тег | VERIFIED | 11fa619 | git rev-parse pre-portfolio-ready → 6bc6c04… |
+| F0.2 Baseline | VERIFIED | 1830c7a | pytest tests/unit -m "not live" --cov → 148 passed, coverage 95.76%; ruff check . → 0 ошибок; bandit -r app admin -ll -q → 0 findings |
+| F0.3 Docker с чистого клона | FAILED (дефект, исправлен в F2) | c0d1f3b | docker compose up (isolated) → контейнеры запущены; ls -la data/ → root:root (uid 10001 писать не может); curl :18001/healthz → сброс соединения; логи: sqlite3.OperationalError; живой прогон изолированного клона — F8.2 (VERIFIED) |
+| F0.4 GitHub Actions | NOT VERIFIED | 4c958b8 | gh run list → exit 4 (не авторизован) |
+| F0.5 Секреты в истории | VERIFIED | 4c958b8 | gitleaks detect --log-opts="--all" → no leaks found; git log --all --oneline -- .env → пусто |
+| F0.6 Полное чтение файлов | VERIFIED | ad5ee96 | реальное ФИО найдено в CHANGELOG.md:27 (устранено в F1); \|safe и autoescape off в шаблонах нет |
+| F0.7 Скрипты | FAILED | ad5ee96 | bash scripts/backup.sh → позиционный аргумент игнорируется; init_new_bot.sh вне корня → exit 1 |
+| F1 Чистка репозитория | VERIFIED | dcf93e7 | git ls-files \| grep -E "opencode\|ai_assistant\|admin/admin.py" → пусто; grep "Янаков" → пусто; pytest → 148 passed; модулярность → 25 |
+| F2 Docker по умолчанию | VERIFIED | 29332df | docker compose config → 127.0.0.1:8001; ADMIN_BIND=0.0.0.0 docker compose config → 0.0.0.0; README: chown -R 10001:10001 |
+| F3 Статусы и демо-баннер | VERIFIED | 7efebc2 | grep ALLOWED_STATUSES admin/web.py; pytest -k demo_banner → 2 passed; общий прогон → 152 passed |
+| F4 PBKDF2 | VERIFIED | f5f67b3 | python -m admin.passwords → pbkdf2_sha256:600000:…; вход в контейнере: curl -X POST :5004/login → 302; общий прогон → 159 passed |
+| F5 Демо-данные | VERIFIED | 69a3135 | grep "демо-бот" content/fitness_coach.json; общий прогон → 159 passed |
+| F6 CI permissions | VERIFIED | 25fa746 | grep permissions .github/workflows/ci.yml → contents: read; grep fetch-depth .github/workflows/quality-gates.yml → fetch-depth: 0 |
+| F7 Честная документация | VERIFIED | 7e7be85 | grep "Как сделан" README.md; grep "Демо-доступ" README.md; grep "159 passed" README.md → 10 файлов / 116 функций |
+| F7-fix LICENSE | VERIFIED | fb5c802 | cat LICENSE → All rights reserved (по D4) |
+| F8.1 healthz (фиктивный токен) | NOT VERIFIED (ожидаемо) | — (прогон без правок кода) | curl :18001/healthz → InvalidToken; живая проверка в F8.2 |
+| F8.2 Живой тест | VERIFIED | — (прогон без правок кода) | getMe → 200; POST /login → 302; GET / → 200 («Тест Тест», @fake_test_contact, DEMO); БД id=1; grep "409\|conflict\|unauthorized" → пусто |
+| F8-fix DEMO_MODE комментарий | VERIFIED (owner-approved) | f698381 | grep DEMO_MODE .env.example |
+| F8.3 Финализация отчёта | VERIFIED | этот коммит | проверки F8.3 — все зелёные (см. выше) |
+
+### Подавления линтеров (noqa / nosec / type: ignore)
+
+Команда: `grep -rn "noqa\|nosec\|type: ignore" app admin scripts tests` — 2 совпадения; `noqa` и `type: ignore` не используются. Подавлений, добавленных в ходе F0–F8, нет — оба существовали до hardening:
+
+| Файл:строка | Маркер | Причина |
+|---|---|---|
+| app/health_server.py:8 | `# nosec B104` | health-сервер намеренно слушает 0.0.0.0 внутри контейнера, чтобы healthcheck был доступен снаружи (существует до hardening, коммит 2db9da8) |
+| admin/web.py:283 | `# nosec B104` | Flask-сервер админки намеренно слушает 0.0.0.0 в контейнере; наружу пробрасывается только порт, доступ с хоста ограничен ADMIN_BIND (по умолчанию 127.0.0.1 — F2; существует до hardening, коммит 4954a60) |
+
+### Изменённые существующие тесты
+
+- `tests/unit/test_web.py` — изменён в F4 (`f5f67b3`): способ формирования `FLASK_PASSWORD_HASH` (HMAC → `hash_password(TEST_PASSWORD, iterations=1000)` из нового `admin/passwords.py`), импорт `admin.web` перенесён на `importlib.import_module` после установки env. Обоснование: ТЗ F4 прямо отменяет HMAC-формат; без правки тесты админки падали бы на `RuntimeError` проверки формата при старте.
+- Остальные существующие тесты не изменялись: F3 только добавлял новые тест-функции в `tests/unit/test_web.py` (`test_update_status_invalid`, `test_update_status_valid`, `TestDemoBanner` — существовавшие функции не тронуты), F5 правок тестов не потребовал. Новый тест-файл: `tests/unit/test_passwords.py` (F4, 7 тестов).
+
+### Baseline vs итог (только измеренные числа)
+
+| Метрика | Baseline (F0.2, 1830c7a) | Итог (F8.3, этот коммит) |
+|---|---|---|
+| pytest: passed / failed | 148 / 0 | 159 / 0 |
+| coverage | 95.76% | 95.76% |
+| ruff check, ошибок | 0 | 0 |
+| bandit findings (-ll) | 0 | 0 (+ 2 существующих nosec B104 — оба до hardening) |
+| тест-файлов | 10 | 10 |
+| тест-функций | 106 | 116 |
+| модулярность, файлов | 27 | 27 (промежуточно F1/F3 — 25) |
+
+Примечания к подсчёту:
+- Команды те же, что в F0.2: `pytest tests/unit -m "not live" --cov --cov-fail-under=80`, `ruff check .`, `ruff format --check .`, `bandit -r app admin -ll -q`, `python scripts/check_modularity.py .`.
+- Тест-файлы/функции, baseline: `find tests -name "test_*.py" | wc -l` → 10 и `grep -rhE "^\s*(async )?def test_" tests | wc -l` → 106 — по всем `tests` (9 unit-файлов / 105 функций + 1 live-файл / 1 функция). Итог: по `tests/unit`, как в README (F7), — 10 файлов / 116 функций; с учётом `tests/live/test_live.py` — 11 файлов / 117 функций. Прирост unit-функций: +4 (F3) и +7 (F4, новый файл `test_passwords.py`); live-тест в unit-прогон не входит (`-m "not live"`).
+- Модулярность: скрипт считает все `.py` вне SKIP_DIRS (app, admin, scripts, tests). F0.2 — 27; F1 — 25 (удалены `ai_assistant.py` и `admin/admin.py`); с F4 — 27 (добавлены `admin/passwords.py` и `tests/unit/test_passwords.py`); финал — 27.
+
+### NOT VERIFIED / N/A (выносится в PR)
+
+1. **F0.4**: `gh run list` — gh не авторизован (exit 4); статус workflows и точные имена проверок (поле `name:` в jobs) владелец проверяет через GitHub UI.
+2. **F8.1**: healthz бота с фиктивным токеном — NOT VERIFIED, причина ожидаемая (`InvalidToken`); живая проверка стека выполнена в F8.2 (VERIFIED).
+3. **F8.2**: production healthz — N/A: production не запущен по решению владельца (не запущен до теста, оставлен незапущенным).
+4. **F8**: зелёные workflows на ветке PR — ссылки даст владелец после пуша (gh не авторизован).
+
+## Отклонения от ТЗ (owner-approved)
+
+- **а)** F7 (`7e7be85`) создал LICENSE с MIT вопреки D4; исправлено в F7-fix (`fb5c802`) — LICENSE «All rights reserved».
+- **б)** F8-fix (`f698381`): комментарий DEMO_MODE в `.env.example` вне allowed files фазы F8 (owner-approved). Причина: после F3 код читает эту переменную, старый комментарий («текущий код переменную не читает») вводил в заблуждение.
+- **в)** В коммит F2 вошли ранее существовавшие незакоммиченные правки `docker-compose.yml` (json-file logging, healthcheck interval) и README — те же файлы, что и правки фазы; логика не нарушена.
+- **г)** F0.3/F8.1/F8.2: изолированный compose-override вне репозитория (порты `18001`/`15004`, имена `fitness-clean-*`/`f8-clean-*`), чтобы не трогать production-стенд.
+- **д)** F8.2: стоп/возврат production — N/A по решению владельца: production не был запущен на момент теста и оставлен незапущенным.
+- **е)** Строка про тесты в README: в ТЗ указано «106 test functions», фактически измерено 116 — записано измеренное (см. F7 и подсчёт выше).
