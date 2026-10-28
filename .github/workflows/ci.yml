@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -35,7 +38,7 @@ jobs:
 
       - name: Py-compile all files
         run: |
-          python -m py_compile app/*.py app/handlers/*.py admin/*.py scripts/*.py tests/*.py tests/unit/*.py tests/live/*.py ai_assistant.py
+          python -m py_compile app/*.py app/handlers/*.py admin/*.py scripts/*.py tests/*.py tests/unit/*.py tests/live/*.py
 
       - name: Unit tests (no live)
         run: python -m pytest tests/unit -m "not live" --quiet

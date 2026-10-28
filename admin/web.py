@@ -1,4 +1,3 @@
-import hashlib
 import hmac
 import io
 import os
@@ -8,12 +7,15 @@ from functools import wraps
 
 import openpyxl
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from admin.passwords import verify_password
 from app.logging_config import WEB_LOG_PATH, get_logger, setup_logging
+
+ALLOWED_STATUSES = {"new", "in_progress", "done"}
 
 load_dotenv()
 
@@ -31,6 +33,8 @@ app.config.update(
     in ("1", "true", "yes"),
 )
 
+DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
+
 limiter = Limiter(key_func=get_remote_address, app=app)
 
 FLASK_USERNAME = os.getenv("FLASK_USERNAME")
@@ -38,6 +42,17 @@ FLASK_PASSWORD_HASH = os.getenv("FLASK_PASSWORD_HASH")
 if not FLASK_USERNAME or not FLASK_PASSWORD_HASH:
     raise RuntimeError("FLASK_USERNAME/FLASK_PASSWORD_HASH not set in .env")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/data/database.db")
+
+_stored_hash = os.environ.get("FLASK_PASSWORD_HASH", "")
+if _stored_hash and not _stored_hash.startswith("pbkdf2_sha256:"):
+    raise RuntimeError(
+        "Неверный формат FLASK_PASSWORD_HASH. Сгенерируйте новый хеш: python -m admin.passwords"
+    )
+
+
+@app.context_processor
+def inject_demo_mode():
+    return {"demo_mode": DEMO_MODE}
 
 
 def get_connection():
@@ -49,8 +64,10 @@ def get_connection():
 
 
 def password_matches(password: str) -> bool:
-    digest = hmac.new(SECRET_KEY.encode(), password.encode(), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(digest, FLASK_PASSWORD_HASH)
+    stored = os.environ.get("FLASK_PASSWORD_HASH", "")
+    if not stored:
+        return False
+    return verify_password(password, stored)
 
 
 def get_csrf_token() -> str:
@@ -126,6 +143,8 @@ def set_security_headers(response):
 @login_required
 def index():
     status_filter = request.args.get("status", "")
+    if status_filter not in ALLOWED_STATUSES:
+        status_filter = ""
     conn = get_connection()
 
     if status_filter:
@@ -160,6 +179,8 @@ def index():
 def update_status():
     app_id = request.form["id"]
     new_status = request.form["status"]
+    if new_status not in ALLOWED_STATUSES:
+        return jsonify({"error": f"Invalid status. Allowed: {sorted(ALLOWED_STATUSES)}"}), 400
     status_filter = (
         request.referrer.split("status=")[-1] if "status=" in (request.referrer or "") else ""
     )
@@ -236,6 +257,8 @@ def _build_workbook(rows) -> io.BytesIO:
 @login_required
 def export():
     status_filter = request.args.get("status", "")
+    if status_filter not in ALLOWED_STATUSES:
+        status_filter = ""
     conn = get_connection()
     if status_filter:
         rows = conn.execute(

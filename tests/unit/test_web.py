@@ -1,3 +1,4 @@
+import importlib
 import io
 import os
 import sqlite3
@@ -5,10 +6,13 @@ import sqlite3
 import openpyxl
 import pytest
 
-import admin.web as web
+from admin.passwords import hash_password
 
 TEST_USERNAME = os.environ["FLASK_USERNAME"]
 TEST_PASSWORD = "test-admin-password"
+os.environ["FLASK_PASSWORD_HASH"] = hash_password(TEST_PASSWORD, iterations=1000)
+
+web = importlib.import_module("admin.web")
 
 CREATE_APPLICATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS applications (
@@ -179,6 +183,56 @@ class TestAuthenticated:
 
         resp = client.post("/update_status", data={"id": row_id, "status": "done"})
         assert resp.status_code == 400
+
+    def test_update_status_invalid(self, client):
+        _login(client)
+        row_id = _insert(client)
+        client.get("/")
+        csrf = _csrf(client)
+
+        resp = client.post(
+            "/update_status",
+            data={"id": row_id, "status": "invalid", "csrf_token": csrf},
+        )
+        assert resp.status_code == 400
+        assert "Invalid status" in resp.get_json()["error"]
+
+        conn = sqlite3.connect(web.DATABASE_PATH)
+        status = conn.execute("SELECT status FROM applications WHERE id=?", (row_id,)).fetchone()[0]
+        conn.close()
+        assert status == "new"
+
+    def test_update_status_valid(self, client):
+        _login(client)
+        row_id = _insert(client)
+        client.get("/")
+        csrf = _csrf(client)
+
+        for status in ["new", "in_progress", "done"]:
+            resp = client.post(
+                "/update_status",
+                data={"id": row_id, "status": status, "csrf_token": csrf},
+            )
+            assert resp.status_code == 302
+
+            conn = sqlite3.connect(web.DATABASE_PATH)
+            saved = conn.execute(
+                "SELECT status FROM applications WHERE id=?", (row_id,)
+            ).fetchone()[0]
+            conn.close()
+            assert saved == status
+
+
+class TestDemoBanner:
+    def test_demo_banner_login(self, client, monkeypatch):
+        monkeypatch.setattr(web, "DEMO_MODE", True)
+        response = client.get("/login")
+        assert b"DEMO" in response.data
+
+    def test_no_demo_banner_login(self, client, monkeypatch):
+        monkeypatch.setattr(web, "DEMO_MODE", False)
+        response = client.get("/login")
+        assert b"DEMO" not in response.data
 
 
 @pytest.mark.parametrize(

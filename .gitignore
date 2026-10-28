@@ -17,3 +17,4 @@ backups/
 .ruff_cache/
 .coverage
 logs/
+.opencode/

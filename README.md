@@ -5,6 +5,24 @@
 
 Telegram-бот фитнес-тренера с формой записи на пробную тренировку, мини-CRM и веб-админкой.
 
+## Как сделан проект
+
+Проект создан с помощью ИИ-инструментов («вайб-кодинг»): я ставлю задачи, проверяю
+поведение и принимаю решения, а код в основном генерируется ИИ. Проверки и отчёты
+в репозитории (`SECURITY.md`, `ACCEPTANCE_REPORT.md`, CI) — самопроверка с участием ИИ,
+а не независимый аудит. Проект является демонстрационным прототипом.
+
+## Демо-доступ
+
+Демо-админка: логин `admin`, пароль `admin123` (только для демо-экземпляра; в нём нет
+реальных данных; не используйте эти значения нигде ещё).
+
+⚠️ **Ограничения демо-режима:**
+- Админка работает по HTTP без TLS.
+- Запускается встроенным сервером Flask (`app.run`), не production-WSGI.
+- Не предназначена для реальных клиентских данных.
+- Для боевого использования нужен TLS и production-WSGI-сервер (в репозиторий не входит).
+
 ## ✨ Особенности
 
 - Визитка тренера с информацией об услугах и ценах
@@ -27,7 +45,7 @@ Telegram-бот фитнес-тренера с формой записи на п
 
        # Веб-админка
        FLASK_USERNAME=admin
-       # хеш пароля: hmac.new(SECRET_KEY, пароль, sha256)
+       # хеш пароля: PBKDF2-HMAC-SHA256 (600 000 итераций)
        FLASK_PASSWORD_HASH=<сгенерировать, см. ниже>
        SECRET_KEY=<случайный_64-символьный_hex>
 
@@ -40,29 +58,41 @@ Telegram-бот фитнес-тренера с формой записи на п
        WEB_LOG_PATH=/app/logs/web.log
        HEALTH_PORT=8001
 
-3. Сгенерировать хеш пароля админки (пароль хранится только в виде хеша,
-   привязанного к `SECRET_KEY`):
+3. Сгенерировать хеш пароля админки (пароль хранится только в виде хеша):
 
-       python3 -c "from dotenv import load_dotenv; load_dotenv(); import hmac,hashlib,os; print(hmac.new(os.environ['SECRET_KEY'].encode(), b'ваш_пароль', hashlib.sha256).hexdigest())"
+       python3 -m admin.passwords
+
+   Пример вывода:
+
+       FLASK_PASSWORD_HASH=pbkdf2_sha256:600000:<salt_hex>:<hash_hex>
 
    Вывод записать в `FLASK_PASSWORD_HASH`.
 
-4. Запустить:
+4. Подготовить каталоги для данных и выдать их пользователю контейнера (uid 10001):
+
+       mkdir -p data logs media
+       sudo chown -R 10001:10001 data logs media
+
+5. Запустить:
 
        docker-compose up -d --build
 
-5. Проверить статус и health:
+6. Проверить статус и health:
 
        docker-compose ps
        curl -f http://localhost:8001/healthz   # бот: 200 ok
        curl -f http://localhost:5004/healthz   # админка: 200 ok
 
+Локально админка открывается на `http://localhost:5004`. На демо-сервере в `.env`
+явно задайте `ADMIN_BIND=0.0.0.0`, `DEMO_MODE=true`, `SESSION_COOKIE_SECURE=False`
+(только для HTTP-демо без реальных данных).
+
 ## 🔐 Миграция с открытого пароля
 
 Если в `.env` ещё остался `FLASK_PASSWORD` в открытом виде, сгенерируйте хеш
-из него и удалите ключ:
+нового пароля и удалите ключ:
 
-    python3 -c "from dotenv import load_dotenv; load_dotenv(); import hmac,hashlib,os; print(hmac.new(os.environ['SECRET_KEY'].encode(), os.environ['FLASK_PASSWORD'].encode(), hashlib.sha256).hexdigest())"
+    python3 -m admin.passwords
 
 Затем в `.env`: `FLASK_PASSWORD_HASH=<вывод>` и удалить строку `FLASK_PASSWORD=...`.
 
@@ -106,7 +136,8 @@ Telegram-бот фитнес-тренера с формой записи на п
 
 ## 🌐 Веб-админка
 
-Доступна по адресу: **http://ВАШ_IP:5004**
+Локально доступна по адресу: **http://localhost:5004** (на демо-сервере — см.
+«Демо-доступ» и настройку `ADMIN_BIND` в `.env`).
 
 Логин и пароль задаются в `.env` (логин `FLASK_USERNAME`, пароль — только в виде
 хеша `FLASK_PASSWORD_HASH`).
@@ -138,6 +169,8 @@ Telegram-бот фитнес-тренера с формой записи на п
 
 ## 🧪 Тесты
 
+Тесты: 10 test files, 116 test functions; последний полный прогон: 159 passed, 0 failed, покрытие 95.76%.
+
     # Быстрый прогон (unit-тесты, без сети)
     python -m pytest tests/unit -m "not live"
 
@@ -161,10 +194,12 @@ Live-тесты, требующие реальный Telegram API, помече�
 
 В CI запускаются только unit-тесты (`-m "not live"`), live-тесты — никогда.
 
-Рекомендуется включить branch protection для `main` с required checks
-(`test`, `docker-build`, `security`, `coverage`, `modularity`) и хранить
-секреты `BOT_TOKEN`, `ADMIN_CHAT_ID`, `FLASK_PASSWORD_HASH`, `SECRET_KEY`
-в GitHub Secrets.
+Рекомендуется включить branch protection для `main` с required checks.
+Фактические имена проверок (выбирать из выпадающего списка):
+- CI: `Lint, compile and unit tests`, `Docker build`
+- Quality Gates: `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate`
+
+В ruleset галочка «Restrict updates» должна быть выключена.
 
 ### 📝 Changelog
 
@@ -193,10 +228,13 @@ Live-тесты, требующие реальный Telegram API, помече�
 ### Healthcheck
 
 Оба сервиса имеют `healthcheck` в `docker-compose.yml` (curl на `/healthz`,
-интервал 30s, start_period 15s). Health-эндпоинты проверяют доступность БД:
+интервал 300s, start_period 15s). Health-эндпоинты проверяют доступность БД:
 
 - бот: `http://localhost:8001/healthz`
 - админка: `http://localhost:5004/healthz`
+
+По умолчанию оба порта публикуются только на `127.0.0.1`. Для доступа к админке
+снаружи задайте `ADMIN_BIND=0.0.0.0` (только за reverse-proxy с TLS).
 
 ## 📝 Обновление контента
 
@@ -224,3 +262,7 @@ Live-тесты, требующие реальный Telegram API, помече�
 | 👤 Логин | `admin` (из `.env`) |
 | 🔑 Пароль | хеш (см. `FLASK_PASSWORD_HASH`) |
 | 🗄 БД | `/app/data/database.db` (volume `./data`) |
+
+## 📄 Лицензия
+
+All rights reserved. Проект опубликован для портфолио и оценки; условия использования — в файле [LICENSE](LICENSE).
