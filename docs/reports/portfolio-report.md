@@ -5,6 +5,8 @@
 Ветка: chore/portfolio-ready
 Тег pre-portfolio-ready: 6bc6c0407d821af939b0de2701c84220315d34fa
 
+Значения паролей и пути сервера скрыты (2026-10-29).
+
 ## F0: Подготовка и baseline
 
 ### Проверки
@@ -56,7 +58,7 @@
 ### Проверки
 | Пункт | Статус | Команда | Вывод |
 |---|---|---|---|
-| clone | VERIFIED | git clone /opt/fitness-coach fitness-clean --branch chore/portfolio-ready | коммит `1830c7a` |
+| clone | VERIFIED | git clone <repo-dir> fitness-clean --branch chore/portfolio-ready | коммит `1830c7a` |
 | .env подготовлен | VERIFIED | cp .env.example .env + sed | фиктивные значения; реальный токен не использован; `DEMO_MODE` в `.env.example` отсутствует, соответствующий sed — no-op |
 | docker compose up (default) | FAILED | docker compose up -d --build | exit 1: `Conflict. The container name "/fitness-coach" is already in use` (конфликт с production) |
 | docker compose up (isolated) | VERIFIED | docker compose -f docker-compose.yml -f docker-compose.isolated.yml up -d | exit 0, оба контейнера созданы и запущены |
@@ -140,7 +142,7 @@
 ### Проверки
 | Пункт | Статус | Команда | Вывод |
 |---|---|---|---|
-| backup.sh | FAILED | bash scripts/backup.sh /tmp/test_backup.db | exit 0, бэкап создаётся (`db-YYYY-MM-DD.db`, `0600`). Но **позиционный аргумент игнорируется**: путь БД задаётся только `DB_PATH`, поэтому вместо переданной БД бэкапится дефолтная `/opt/fitness-coach/data/database.db` (доказано тестовой БД с таблицей `marker_test`). Для безопасного теста использованы `BACKUP_DIR=/tmp/...`. |
+| backup.sh | FAILED | bash scripts/backup.sh /tmp/test_backup.db | exit 0, бэкап создаётся (`db-YYYY-MM-DD.db`, `0600`). Но **позиционный аргумент игнорируется**: путь БД задаётся только `DB_PATH`, поэтому вместо переданной БД бэкапится дефолтная `<repo-dir>/data/database.db` (доказано тестовой БД с таблицей `marker_test`). Для безопасного теста использованы `BACKUP_DIR=/tmp/...`. |
 | backup.sh: env-режим | VERIFIED | `DB_PATH=/tmp/test_backup.db BACKUP_DIR=/tmp/... bash scripts/backup.sh` | exit 0; создан корректный бэкап переданной БД, права `0600`, каталог `0700`. |
 | backup.sh: ротация | VERIFIED | test-файл с mtime 20 дней + повторный запуск | старый `db-2000-01-01.db` удалён; ротация `RETENTION_DAYS=14` работает (`find -mtime +14`). |
 | init_new_bot.sh | FAILED | bash init_new_bot.sh --template=fitness --name=test | exit 1: `шаблон не найден: templates/fitness.json`; из `/tmp` список доступных шаблонов пуст (пути относительные), из корня проекта — `beauty/cafe/manicure/psychologist`. Пример `--template=fitness` в usage вводит в заблуждение — такого шаблона нет. |
@@ -488,7 +490,7 @@
 
 ### Окружение
 
-- Чистый venv: `/tmp/opencode/g1-venv`, Python 3.12.3.
+- Чистый venv: `<tmp>/g1-venv`, Python 3.12.3.
 - Установлено: `requirements.txt` + `pytest==9.1.1`, `pytest-asyncio==1.4.0`, `pytest-cov==7.1.0`, `ruff==0.16.1`, `bandit==1.9.4`.
 
 ### Команды и сырой вывод
@@ -555,12 +557,12 @@ $ grep -rhE "^\s*(async )?def test_" tests/unit | wc -l
 
 ### Чистый клон и Docker
 
-Клон ветки: `git clone --branch chore/demo-polish /opt/fitness-coach /tmp/opencode/g5-clean` (HEAD `52955a0`, G4).
+Клон ветки: `git clone --branch chore/demo-polish <repo-dir> <tmp>/g5-clean` (HEAD `52955a0`, G4).
 
 Изолированный стенд (override вне репозитория, чтобы не трогать production): порты `127.0.0.1:15004` (админка) и `127.0.0.1:18001` (health бота), имена `g5-clean-*`.
 
 ```
-$ docker compose -f docker-compose.yml -f /tmp/opencode/g5-override.yml -p g5clean up -d --build
+$ docker compose -f docker-compose.yml -f <tmp>/g5-override.yml -p g5clean up -d --build
 ...
  Container g5-clean-bot  Started
  Container g5-clean-webadmin  Started
@@ -578,7 +580,7 @@ $ curl -f http://127.0.0.1:18001/healthz   # бот
 200 ok
 $ curl -f http://127.0.0.1:15004/healthz   # админка
 200 ok
-$ curl -X POST -d "username=admin&password=G5-Demo-Pass-2026" http://127.0.0.1:15004/login
+$ curl -X POST -d "username=admin&password=<test-password>" http://127.0.0.1:15004/login
 POST /login -> 302 redirect=http://127.0.0.1:15004/
 $ curl -b cookies http://127.0.0.1:15004/
 GET / -> 200 (в HTML: Fitness Coach, Заявки, DEMO, Выйти)
@@ -631,7 +633,7 @@ G1 цифры не изменил: 159 passed / 0 failed, покрытие 95.76
 ### Отклонения от ТЗ (owner-approved)
 
 - **P1 отменён** (решение владельца D2): демо-экземпляр «только для чтения» не создавался; показываются скриншоты и основной живой бот `@Demo_Fitness_Coach_bot` (D3).
-- **G5-стенд изолирован**: override вне репозитория (`/tmp/opencode/g5-override.yml`), порты `15004`/`18001`, имена `g5-clean-*` — чтобы не останавливать production-контейнеры (аналогично отклонению «г» в F0.3/F8).
+- **G5-стенд изолирован**: override вне репозитория (`<tmp>/g5-override.yml`), порты `15004`/`18001`, имена `g5-clean-*` — чтобы не останавливать production-контейнеры (аналогично отклонению «г» в F0.3/F8).
 - **G5: фиктивный `BOT_TOKEN`** в чистом клоне: реальный токен конфликтует с production-поллингом. Health бота проверен, Telegram-подключение — нет (ожидаемый `InvalidToken`).
 - **docs/assets/**: на момент G5 каталог был пуст (git не хранит пустые каталоги). 2026-10-29 владелец передал 2 скриншота бота; они добавлены в `docs/assets/` (см. раздел «G3-fix»).
 - **Workflow-ссылки** даны для `main` (`235c4b6`); прогоны ветки появятся после пуша.
