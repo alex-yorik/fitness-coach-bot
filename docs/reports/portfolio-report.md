@@ -610,7 +610,7 @@ Required test coverage of 80% reached. Total coverage: 95.76%
 - Quality Gates (push): success — https://github.com/alex-yorik/fitness-coach-bot/actions/runs/40743602477
 - Check-runs коммита: `Lint, compile and unit tests`, `Docker build`, `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate` — все success.
 
-Прогоны для `chore/demo-polish` запустятся после пуша ветки (шаг 7); до пуша их статус не проверялся.
+Workflows настроены на push в `main` и на `pull_request` в `main`; push feature-ветки `chore/demo-polish` прогоны не запускает (`gh api .../runs?branch=chore/demo-polish` → 0). Для проверки ветки нужен PR в `main`; он не создавался (в ТЗ только push ветки).
 
 ### Таблица G1–G5
 
