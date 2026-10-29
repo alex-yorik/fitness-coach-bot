@@ -30,7 +30,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["app"]
+source = ["app", "admin"]
 branch = true
 omit = ["app/__init__.py"]
 
