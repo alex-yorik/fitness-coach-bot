@@ -175,7 +175,7 @@ reverse proxy с TLS (nginx/Caddy) и firewall-правила.
 
 ## 🧪 Тесты
 
-Тесты: 10 test files, 116 test functions; последний полный прогон: 159 passed, 0 failed, покрытие 95.76%.
+Тесты: 10 test files, 116 test functions; последний полный прогон: 159 passed, 0 failed, покрытие 95.76%; подтверждено повторным прогоном 2026-10-29.
 
     # Быстрый прогон (unit-тесты, без сети)
     python -m pytest tests/unit -m "not live"

@@ -481,3 +481,70 @@
 - **г)** F0.3/F8.1/F8.2: изолированный compose-override вне репозитория (порты `18001`/`15004`, имена `fitness-clean-*`/`f8-clean-*`), чтобы не трогать production-стенд.
 - **д)** F8.2: стоп/возврат production — N/A по решению владельца: production не был запущен на момент теста и оставлен незапущенным.
 - **е)** Строка про тесты в README: в ТЗ указано «106 test functions», фактически измерено 116 — записано измеренное (см. F7 и подсчёт выше).
+
+## G1: Перепроверка покрытия и чисел тестов
+
+Дата: 2026-10-29. Ветка `chore/demo-polish`, тег `pre-demo-polish`.
+
+### Окружение
+
+- Чистый venv: `/tmp/opencode/g1-venv`, Python 3.12.3.
+- Установлено: `requirements.txt` + `pytest==9.1.1`, `pytest-asyncio==1.4.0`, `pytest-cov==7.1.0`, `ruff==0.16.1`, `bandit==1.9.4`.
+
+### Команды и сырой вывод
+
+```
+$ python -m pytest tests/unit -m "not live" --cov --cov-report=term-missing --cov-fail-under=80
+collected 159 items
+
+tests/unit/test_bot.py ..                                                [  1%]
+tests/unit/test_content_loader.py ..............                         [ 10%]
+tests/unit/test_database.py ........                                     [ 15%]
+tests/unit/test_handlers.py .....                                        [ 18%]
+tests/unit/test_health_server.py ....                                    [ 20%]
+tests/unit/test_logging_config.py .......                                [ 25%]
+tests/unit/test_passwords.py .......                                     [ 29%]
+tests/unit/test_trial.py .....................                           [ 42%]
+tests/unit/test_validators.py .......................................... [ 69%]
+..................                                                       [ 80%]
+tests/unit/test_web.py ...............................                   [100%]
+
+Name                    Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------
+app/bot.py                 36      1      8      2    93%   43->46, 65
+app/config.py               8      0      0      0   100%
+app/content_loader.py      39      0     10      0   100%
+app/database.py            18      0      2      0   100%
+app/handlers/pages.py      17      0      2      0   100%
+app/handlers/start.py      10      0      0      0   100%
+app/handlers/trial.py     111      0     18      1    99%   123->130
+app/health_server.py       37      2      4      0    95%   19-20
+app/keyboards.py           10      1      2      1    83%   14
+app/logging_config.py      29      0      4      0   100%
+app/validators.py         164     14    108      3    93%   57->47, 88->84, 175-193
+-------------------------------------------------------------------
+TOTAL                     479     18    158      7    96%
+Required test coverage of 80% reached. Total coverage: 95.76%
+======================= 159 passed, 1 warning in 17.23s ========================
+```
+
+```
+$ find tests/unit -name "test_*.py" | wc -l
+10
+
+$ grep -rhE "^\s*(async )?def test_" tests/unit | wc -l
+116
+```
+
+### Измеренные значения
+
+| Метрика | Значение |
+|---|---|
+| passed / failed / skipped | 159 / 0 / 0 |
+| TOTAL coverage | 95.76% (округлённо 96%) |
+| test files (`tests/unit`) | 10 |
+| test functions (`tests/unit`) | 116 |
+
+### Сверка с README
+
+Строка README («10 test files, 116 test functions; 159 passed, 0 failed, покрытие 95.76%») совпала с повторным прогоном: **подтверждено повторным прогоном 2026-10-29**. Цифры не менялись.
