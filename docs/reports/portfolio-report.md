@@ -674,3 +674,36 @@ $ docker build -t fitness-coach:g5-check .            → Successfully tagged, e
 ```
 
 Состояние production на 2026-10-29: `fitness-coach` и `fitness-coach-webadmin` — `healthy`, `GET /healthz` на портах 8001 и 5004 — HTTP 200. Наблюдение из раздела G5 о crash-loop бота устарело: владелец заменил `BOT_TOKEN`, контейнер перезапущен и работает.
+
+## H1: admin/ включён в измерение покрытия
+
+Дата: 2026-10-29. Ветка `chore/final-touches`.
+
+В `pyproject.toml` (`[tool.coverage.run]`) источник покрытия расширен:
+`source = ["app", "admin"]`. Порог `fail_under = 80` не менялся.
+
+```
+$ python3 -m pytest tests/unit -m "not live" --cov --cov-report=term-missing --cov-fail-under=80
+Name                    Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------
+admin/passwords.py         36     14      8      2    55%   44, 50-51, 59-71, 75
+admin/web.py              181      8     36      8    93%   27, 43, 48, 69, 74->76, 146->148, 151, 281-283
+app/bot.py                 36      1      8      2    93%   43->46, 65
+app/config.py               8      0      0      0   100%
+app/content_loader.py      39      0     10      0   100%
+app/database.py            18      0      2      0   100%
+app/handlers/pages.py      17      0      2      0   100%
+app/handlers/start.py      10      0      0      0   100%
+app/handlers/trial.py     111      0     18      1    99%   123->130
+app/health_server.py       37      2      4      0    95%   19-20
+app/keyboards.py           10      1      2      1    83%   14
+app/logging_config.py      29      0      4      0   100%
+app/validators.py         164     14    108      3    93%   57->47, 88->84, 175-193
+-------------------------------------------------------------------
+TOTAL                     696     40    202     17    93%
+Required test coverage of 80% reached. Total coverage: 92.98%
+159 passed, 1 warning in 11.30s
+```
+
+Итог: гейт ≥ 80% пройден (92.98%); дополнительные тесты не требовались.
+README обновлён на 92.98% с явным указанием пакетов `app/` и `admin/`.

@@ -176,7 +176,7 @@ HTTPS (reverse proxy или туннель); см. docs/DEMO.md.
 
 ## 🧪 Тесты
 
-Тесты: 10 test files, 116 test functions; последний полный прогон: 159 passed, 0 failed, покрытие 95.76%; подтверждено повторным прогоном 2026-10-29.
+Тесты: 10 test files, 116 test functions; последний полный прогон: 159 passed, 0 failed, покрытие 92.98% (пакеты app/ и admin/; гейт ≥ 80% в CI); подтверждено повторным прогоном 2026-10-29.
 
     # Быстрый прогон (unit-тесты, без сети)
     python -m pytest tests/unit -m "not live"
