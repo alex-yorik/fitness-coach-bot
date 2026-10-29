@@ -584,7 +584,9 @@ $ curl -b cookies http://127.0.0.1:15004/
 GET / -> 200 (в HTML: Fitness Coach, Заявки, DEMO, Выйти)
 ```
 
-Бот запущен с фиктивным `BOT_TOKEN` (изоляция от production-поллинга): health-сервер отвечает `200 ok`, в логах ожидаемый `telegram.error.InvalidToken`. Живой Telegram-бот в этом прогоне не проверялся (production-бот работает отдельно).
+Бот запущен с фиктивным `BOT_TOKEN` (изоляция от production-поллинга): health-сервер отвечает `200 ok`, в логах ожидаемый `telegram.error.InvalidToken`. Живой Telegram-бот в этом прогоне не проверялся.
+
+**Наблюдение вне задачи:** production-контейнер `fitness-coach` на момент проверки находится в crash-loop с `telegram.error.InvalidToken` (токен отклонён сервером). Это состояние существовало до начала работ (на старте сессии контейнер был `Up 1 second`), код и `.env` не менялись. Для живого показа `@Demo_Fitness_Coach_bot` владельцу нужно заменить `BOT_TOKEN` в `.env` production-стенда.
 
 ### Проверки 1.4
 
