@@ -709,3 +709,56 @@ Required test coverage of 80% reached. Total coverage: 92.98%
 
 Итог: гейт ≥ 80% пройден (92.98%); дополнительные тесты не требовались.
 README обновлён на 92.98% с явным указанием пакетов `app/` и `admin/`.
+
+## Последние правки (H1–H5)
+
+Дата: 2026-10-29. Ветка `chore/final-touches`. Тег `pre-final-touches`.
+
+| Блок | Статус | Доказательство |
+|---|---|---|
+| H1 — admin/ в покрытии | VERIFIED | `source = ["app", "admin"]`; pytest: 159 passed, TOTAL 92.98% (гейт ≥ 80%) |
+| H2 — запрет туннеля к рабочей админке | VERIFIED | `docs/DEMO.md` (способы 1–3, «Чего не делать»), `TECH_DEBT.md` (запись 2026-10-29) |
+| H3 — единые формулировки | VERIFIED | grep `reverse-proxy с TLS` / `явно установите .ADMIN_BIND=0.0.0.0` → пусто; README/SECURITY/TECH_DEBT/.env.example |
+| H4 — скрытие пароля и путей | VERIFIED | grep `G5-Demo-Pass` / `/opt/fitness-coach` → пусто; `<test-password>`, `<repo-dir>`, `<tmp>/` |
+| H5 — финальная проверка | VERIFIED | проверки 1.4 exit 0; `docker build -t fitness-coach:ci .` → success |
+
+### Сырой вывод покрытия (H1, с admin/)
+
+```
+Name                    Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------
+admin/passwords.py         36     14      8      2    55%   44, 50-51, 59-71, 75
+admin/web.py              181      8     36      8    93%   27, 43, 48, 69, 74->76, 146->148, 151, 281-283
+...
+TOTAL                     696     40    202     17    93%
+Required test coverage of 80% reached. Total coverage: 92.98%
+159 passed, 1 warning in 12.49s
+```
+
+### Проверки 1.4 и сборка
+
+```
+$ python3 -m compileall -q app admin scripts tests   → exit 0
+$ ruff check .                                       → All checks passed!
+$ ruff format --check .                              → 40 files already formatted
+$ bandit -r app admin -ll -q                         → exit 0 (1 существующий nosec B104)
+$ python3 scripts/check_modularity.py .              → Модульность в порядке: проверено 27 файлов
+$ python3 -m pytest tests/unit -m "not live" --cov --cov-fail-under=80
+TOTAL 696 40 202 17 93%
+Required test coverage of 80% reached. Total coverage: 92.98%
+159 passed, 1 warning
+$ docker build -t fitness-coach:ci .                 → Successfully tagged fitness-coach:ci
+```
+
+### Изменившиеся цифры README
+
+| Было | Стало |
+|---|---|
+| покрытие 95.76% (`app/`) | покрытие 92.98% (`app/` + `admin/`; гейт ≥ 80% в CI) |
+| 159 passed / 0 failed | без изменений |
+| 10 test files / 116 test functions | без изменений |
+
+### Отклонения от ТЗ (owner-approved)
+
+- **P1 (отдельный демо-экземпляр) не реализован** — решение владельца: пока не делаем; в `docs/DEMO.md` и `TECH_DEBT.md` зафиксировано, что он требуется для безопасного живого показа через туннель.
+- **TLS не добавлялся**, админка закрыта на `127.0.0.1` — решение владельца.
