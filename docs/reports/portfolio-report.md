@@ -673,4 +673,4 @@ Required test coverage of 80% reached. Total coverage: 95.76%
 $ docker build -t fitness-coach:g5-check .            → Successfully tagged, exit 0
 ```
 
-Состояние production на 2026-10-29: `fitness-coach` и `fitness-coach-webadmin` — `healthy`, `GET /healthz` на портах 8001 и 5004 — HTTP 200.
+Состояние production на 2026-10-29: `fitness-coach` и `fitness-coach-webadmin` — `healthy`, `GET /healthz` на портах 8001 и 5004 — HTTP 200. Наблюдение из раздела G5 о crash-loop бота устарело: владелец заменил `BOT_TOKEN`, контейнер перезапущен и работает.
