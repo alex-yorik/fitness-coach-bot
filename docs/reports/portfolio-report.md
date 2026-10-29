@@ -548,3 +548,88 @@ $ grep -rhE "^\s*(async )?def test_" tests/unit | wc -l
 ### Сверка с README
 
 Строка README («10 test files, 116 test functions; 159 passed, 0 failed, покрытие 95.76%») совпала с повторным прогоном: **подтверждено повторным прогоном 2026-10-29**. Цифры не менялись.
+
+## G5: Финальная проверка и отчёт
+
+Дата: 2026-10-29. Ветка `chore/demo-polish`, тег `pre-demo-polish`.
+
+### Чистый клон и Docker
+
+Клон ветки: `git clone --branch chore/demo-polish /opt/fitness-coach /tmp/opencode/g5-clean` (HEAD `52955a0`, G4).
+
+Изолированный стенд (override вне репозитория, чтобы не трогать production): порты `127.0.0.1:15004` (админка) и `127.0.0.1:18001` (health бота), имена `g5-clean-*`.
+
+```
+$ docker compose -f docker-compose.yml -f /tmp/opencode/g5-override.yml -p g5clean up -d --build
+...
+ Container g5-clean-bot  Started
+ Container g5-clean-webadmin  Started
+
+$ docker compose ... ps -a
+NAME                IMAGE                   COMMAND                 SERVICE         STATUS
+g5-clean-bot        g5clean-fitness-coach   "python -m app.bot"     fitness-coach   Up (health: starting)
+g5-clean-webadmin   g5clean-webadmin        "python -m admin.web"   webadmin        Up (healthy)
+```
+
+Проверки стека:
+
+```
+$ curl -f http://127.0.0.1:18001/healthz   # бот
+200 ok
+$ curl -f http://127.0.0.1:15004/healthz   # админка
+200 ok
+$ curl -X POST -d "username=admin&password=G5-Demo-Pass-2026" http://127.0.0.1:15004/login
+POST /login -> 302 redirect=http://127.0.0.1:15004/
+$ curl -b cookies http://127.0.0.1:15004/
+GET / -> 200 (в HTML: Fitness Coach, Заявки, DEMO, Выйти)
+```
+
+Бот запущен с фиктивным `BOT_TOKEN` (изоляция от production-поллинга): health-сервер отвечает `200 ok`, в логах ожидаемый `telegram.error.InvalidToken`. Живой Telegram-бот в этом прогоне не проверялся (production-бот работает отдельно).
+
+### Проверки 1.4
+
+```
+$ python -m compileall -q app admin scripts tests          → exit 0
+$ ruff check .                                             → All checks passed!
+$ ruff format --check .                                    → 40 files already formatted
+$ bandit -r app admin -ll -q                               → exit 0 (только 1 существующий nosec B104)
+$ python scripts/check_modularity.py .                     → Модульность в порядке: проверено 27 файлов
+$ python -m pytest tests/unit -m "not live" --cov --cov-fail-under=80
+TOTAL 479 18 158 7 96%
+Required test coverage of 80% reached. Total coverage: 95.76%
+159 passed, 1 warning in 19.70s
+```
+
+`git status --short` (в рабочем дереве только служебные файлы вне задачи: `AGENTS.md` — хук graphify, `.env.backup-*`, `.gitattributes`, `.graphifyignore`, `graphify-out/`) и `git diff --stat` — `AGENTS.md | 13 +++++++++++++`; в коммиты G1–G5 эти файлы не входят.
+
+### GitHub Actions
+
+На `main` (`235c4b6`):
+
+- CI (push): success — https://github.com/alex-yorik/fitness-coach-bot/actions/runs/40743602274
+- Quality Gates (push): success — https://github.com/alex-yorik/fitness-coach-bot/actions/runs/40743602477
+- Check-runs коммита: `Lint, compile and unit tests`, `Docker build`, `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate` — все success.
+
+Прогоны для `chore/demo-polish` запустятся после пуша ветки (шаг 7); до пуша их статус не проверялся.
+
+### Таблица G1–G5
+
+| Блок | Статус | Команда/доказательство |
+|---|---|---|
+| G1 — покрытие и числа тестов | VERIFIED | `pytest tests/unit -m "not live" --cov` → 159 passed / 0 failed; TOTAL 95.76%; 10 файлов / 116 функций; совпало с README |
+| G2 — документация под закрытую админку | VERIFIED | `grep -n "admin123\|Миграция с открытого\|Демо-доступ\|reverse proxy с TLS" README.md SECURITY.md TECH_DEBT.md` → пусто; diff README/SECURITY/TECH_DEBT/.env.example |
+| G3 — ссылка на бота и скриншоты | VERIFIED (структура) | `grep -n "Demo_Fitness_Coach_bot\|docs/assets/" README.md`; `mkdir -p docs/assets`; PNG загружает владелец |
+| G4 — docs/DEMO.md | VERIFIED | `grep -n "docs/DEMO.md" README.md`; `curl -I` ссылки Cloudflare → 200 |
+| G5 — финальная проверка | VERIFIED (админка/health) | чистый клон + `docker compose up -d --build`; `/healthz` 200/200; `POST /login` → 302 → `GET /` 200; 1.4 — все зелёные |
+
+### Изменившиеся цифры
+
+G1 цифры не изменил: 159 passed / 0 failed, покрытие 95.76%, 10 test files, 116 test functions — совпало с прежним README. Других измеряемых цифр правки G2–G5 не меняют.
+
+### Отклонения от ТЗ (owner-approved)
+
+- **P1 отменён** (решение владельца D2): демо-экземпляр «только для чтения» не создавался; показываются скриншоты и основной живой бот `@Demo_Fitness_Coach_bot` (D3).
+- **G5-стенд изолирован**: override вне репозитория (`/tmp/opencode/g5-override.yml`), порты `15004`/`18001`, имена `g5-clean-*` — чтобы не останавливать production-контейнеры (аналогично отклонению «г» в F0.3/F8).
+- **G5: фиктивный `BOT_TOKEN`** в чистом клоне: реальный токен конфликтует с production-поллингом. Health бота проверен, Telegram-подключение — нет (ожидаемый `InvalidToken`).
+- **docs/assets/ пуста**: git не хранит пустые каталоги; PNG добавляет владелец через GitHub UI/scp, после чего структура появится в репозитории.
+- **Workflow-ссылки** даны для `main` (`235c4b6`); прогоны ветки появятся после пуша.
