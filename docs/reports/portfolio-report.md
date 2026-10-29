@@ -620,7 +620,7 @@ Workflows настроены на push в `main` и на `pull_request` в `main
 |---|---|---|
 | G1 — покрытие и числа тестов | VERIFIED | `pytest tests/unit -m "not live" --cov` → 159 passed / 0 failed; TOTAL 95.76%; 10 файлов / 116 функций; совпало с README |
 | G2 — документация под закрытую админку | VERIFIED | `grep -n "admin123\|Миграция с открытого\|Демо-доступ\|reverse proxy с TLS" README.md SECURITY.md TECH_DEBT.md` → пусто; diff README/SECURITY/TECH_DEBT/.env.example |
-| G3 — ссылка на бота и скриншоты | VERIFIED (структура) | `grep -n "Demo_Fitness_Coach_bot\|docs/assets/" README.md`; `mkdir -p docs/assets`; PNG загружает владелец |
+| G3 — ссылка на бота и скриншоты | VERIFIED | `grep -n "Demo_Fitness_Coach_bot\|docs/assets/" README.md`; `file docs/assets/*.png` → 2 PNG; см. раздел «G3-fix» |
 | G4 — docs/DEMO.md | VERIFIED | `grep -n "docs/DEMO.md" README.md`; `curl -I` ссылки Cloudflare → 200 |
 | G5 — финальная проверка | VERIFIED (админка/health) | чистый клон + `docker compose up -d --build`; `/healthz` 200/200; `POST /login` → 302 → `GET /` 200; 1.4 — все зелёные |
 
@@ -633,5 +633,44 @@ G1 цифры не изменил: 159 passed / 0 failed, покрытие 95.76
 - **P1 отменён** (решение владельца D2): демо-экземпляр «только для чтения» не создавался; показываются скриншоты и основной живой бот `@Demo_Fitness_Coach_bot` (D3).
 - **G5-стенд изолирован**: override вне репозитория (`/tmp/opencode/g5-override.yml`), порты `15004`/`18001`, имена `g5-clean-*` — чтобы не останавливать production-контейнеры (аналогично отклонению «г» в F0.3/F8).
 - **G5: фиктивный `BOT_TOKEN`** в чистом клоне: реальный токен конфликтует с production-поллингом. Health бота проверен, Telegram-подключение — нет (ожидаемый `InvalidToken`).
-- **docs/assets/ пуста**: git не хранит пустые каталоги; PNG добавляет владелец через GitHub UI/scp, после чего структура появится в репозитории.
+- **docs/assets/**: на момент G5 каталог был пуст (git не хранит пустые каталоги). 2026-10-29 владелец передал 2 скриншота бота; они добавлены в `docs/assets/` (см. раздел «G3-fix»).
 - **Workflow-ссылки** даны для `main` (`235c4b6`); прогоны ветки появятся после пуша.
+
+## G3-fix: скриншоты от владельца
+
+Дата: 2026-10-29. Ветка `chore/demo-polish`.
+
+Владелец передал два снимка экрана Telegram-бота (JPEG 1080 px по ширине), из них созданы PNG для README:
+
+| Исходник | Файл в репозитории | Содержимое | Размер |
+|---|---|---|---|
+| `de91c66a-…jpg` | `docs/assets/bot-chat.png` | приветствие `/start`, кнопки меню | 1080×2100, ~1.1 МБ |
+| `d8778f42-…jpg` | `docs/assets/trial-form.png` | шаги 3–4 формы и подтверждение заявки | 1080×2082, ~1.1 МБ |
+
+Ссылки в README указывают на эти файлы; строка «Скриншоты загружаются владельцем…» заменена на фактическое описание, упоминание скриншотов админки убрано (снимков админки не передано).
+
+### Проверки G3-fix
+
+| Пункт | Статус | Команда | Вывод |
+|---|---|---|---|
+| файлы существуют | VERIFIED | `file docs/assets/*.png` | 2 файла: PNG, 8-bit RGB, без интерлейса |
+| ссылки README | VERIFIED | `grep -n "docs/assets/" README.md` | `bot-chat.png`, `trial-form.png` |
+| данные вымышленные | VERIFIED | осмотр снимков | имя «Тест Тест», контакт `@fake_test_contact` |
+| проверки 1.4 | VERIFIED | см. команды ниже | все exit 0 |
+
+### Повторный прогон 1.4 (после добавления PNG)
+
+```
+$ python -m compileall -q app admin scripts tests     → exit 0
+$ ruff check .                                        → All checks passed!
+$ ruff format --check .                               → 40 files already formatted
+$ bandit -r app admin -ll -q                          → exit 0 (1 существующий nosec B104)
+$ python scripts/check_modularity.py .                → Модульность в порядке: проверено 27 файлов
+$ python -m pytest tests/unit -m "not live" --cov --cov-fail-under=80
+TOTAL 479 18 158 7 96%
+Required test coverage of 80% reached. Total coverage: 95.76%
+159 passed, 1 warning in 21.07s
+$ docker build -t fitness-coach:g5-check .            → Successfully tagged, exit 0
+```
+
+Состояние production на 2026-10-29: `fitness-coach` и `fitness-coach-webadmin` — `healthy`, `GET /healthz` на портах 8001 и 5004 — HTTP 200.
