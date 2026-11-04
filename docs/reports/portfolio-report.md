@@ -451,8 +451,8 @@
 
 | Метрика | Baseline (F0.2, 1830c7a) | Итог (F8.3, этот коммит) |
 |---|---|---|
-| pytest: passed / failed | 148 / 0 | 159 / 0 |
-| coverage | 95.76% | 95.76% |
+| pytest: passed / failed | 148 / 0 | 186 / 0 |
+| coverage | 95.76% | 93.67% |
 | ruff check, ошибок | 0 | 0 |
 | bandit findings (-ll) | 0 | 0 (+ 2 существующих nosec B104 — оба до hardening) |
 | тест-файлов | 10 | 10 |
@@ -463,6 +463,8 @@
 - Команды те же, что в F0.2: `pytest tests/unit -m "not live" --cov --cov-fail-under=80`, `ruff check .`, `ruff format --check .`, `bandit -r app admin -ll -q`, `python scripts/check_modularity.py .`.
 - Тест-файлы/функции, baseline: `find tests -name "test_*.py" | wc -l` → 10 и `grep -rhE "^\s*(async )?def test_" tests | wc -l` → 106 — по всем `tests` (9 unit-файлов / 105 функций + 1 live-файл / 1 функция). Итог: по `tests/unit`, как в README (F7), — 10 файлов / 116 функций; с учётом `tests/live/test_live.py` — 11 файлов / 117 функций. Прирост unit-функций: +4 (F3) и +7 (F4, новый файл `test_passwords.py`); live-тест в unit-прогон не входит (`-m "not live"`).
 - Модулярность: скрипт считает все `.py` вне SKIP_DIRS (app, admin, scripts, tests). F0.2 — 27; F1 — 25 (удалены `ai_assistant.py` и `admin/admin.py`); с F4 — 27 (добавлены `admin/passwords.py` и `tests/unit/test_passwords.py`); финал — 27.
+
+Metrics verified on 2026-11-04 at commit 8b3b819.
 
 ### NOT VERIFIED / N/A (выносится в PR)
 
