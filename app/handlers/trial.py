@@ -1,4 +1,5 @@
 import logging
+import time
 from html import escape
 
 from telegram import Update
@@ -13,13 +14,54 @@ from telegram.ext import (
 
 from app.config import ADMIN_CHAT_ID
 from app.content_loader import load_content
-from app.database import get_connection
+from app.database import save_application_async
 from app.keyboards import back_keyboard, main_keyboard
 from app.validators import validate_answer
 
 logger = logging.getLogger(__name__)
 
 NAME, AGE, GOAL, CONTACT = range(4)
+
+RATE_LIMIT_SECONDS = 60.0
+_last_submission_at: dict[int, float] = {}
+_submitted_users: set[int] = set()
+
+
+def _user_id(update: Update) -> int | None:
+    user = getattr(update, "effective_user", None)
+    if user is not None:
+        return getattr(user, "id", None)
+
+    message = getattr(update, "message", None)
+    from_user = getattr(message, "from_user", None) if message is not None else None
+    return getattr(from_user, "id", None) if from_user is not None else None
+
+
+def _submission_block(user_id: int | None) -> tuple[str, bool] | None:
+    """Возвращает текст блокировки и признак завершения диалога."""
+    if user_id is None:
+        return None
+
+    last_attempt = _last_submission_at.get(user_id)
+    if last_attempt is not None and time.monotonic() - last_attempt < RATE_LIMIT_SECONDS:
+        return "Подождите минуту перед следующей отправкой", False
+
+    if user_id in _submitted_users:
+        return "Вы уже отправляли заявку. Повторная отправка недоступна.", True
+
+    return None
+
+
+def _answers_summary(answers: dict) -> str:
+    fields = [
+        ("👤 Имя", "name"),
+        ("🎂 Возраст", "age"),
+        ("🎯 Цель", "goal"),
+        ("📞 Контакт", "contact"),
+    ]
+    return "\n".join(
+        f"{label}: {escape(str(answers.get(key, 'не указано')))}" for label, key in fields
+    )
 
 
 def _trial_data():
@@ -108,28 +150,21 @@ async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _save_application(context: ContextTypes.DEFAULT_TYPE, answers: dict) -> None:
-    """Сохраняет заявку в БД, логирует ошибку и уведомляет администратора."""
+    """Сохраняет заявку в рабочем потоке, логирует ошибку и уведомляет администратора."""
 
-    conn = get_connection()
     try:
-        conn.execute(
-            "INSERT INTO applications (name, age, goal, contact) VALUES (?, ?, ?, ?)",
-            (answers.get("name"), answers.get("age"), answers.get("goal"), answers.get("contact")),
-        )
-        conn.commit()
+        await save_application_async(answers)
     except Exception as e:
-        conn.rollback()
         logger.error("Ошибка при сохранении заявки: %s", e)
         if ADMIN_CHAT_ID:
             await context.bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
-                text=f"❌ Ошибка при сохранении заявки:\n\n{escape(str(e))}\n\n"
-                f"Данные: {escape(str(answers))}",
+                text="❌ Ошибка при сохранении заявки:\n\n"
+                f"{escape(str(e))}\n\n"
+                f"Данные:\n{_answers_summary(answers)}",
                 parse_mode=ParseMode.HTML,
             )
         raise
-    finally:
-        conn.close()
 
 
 async def _success_reply(update: Update, answers: dict) -> None:
@@ -148,6 +183,13 @@ async def _success_reply(update: Update, answers: dict) -> None:
 
 
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = _user_id(update)
+    block = _submission_block(user_id)
+    if block is not None:
+        message, terminal = block
+        await update.message.reply_text(message, reply_markup=main_keyboard())
+        return ConversationHandler.END if terminal else CONTACT
+
     step = _trial_step(3)
     ok, _ = validate_answer(step.get("validation", "contact"), update.message.text)
     if not ok:
@@ -160,6 +202,9 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["contact"] = update.message.text
     context.user_data["trial_step"] = 3
 
+    if user_id is not None:
+        _last_submission_at[user_id] = time.monotonic()
+
     try:
         await _save_application(context, context.user_data)
     except Exception:
@@ -169,6 +214,9 @@ async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=main_keyboard(),
         )
         return ConversationHandler.END
+
+    if user_id is not None:
+        _submitted_users.add(user_id)
 
     await _success_reply(update, context.user_data)
     context.user_data.clear()
