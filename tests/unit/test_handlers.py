@@ -13,6 +13,7 @@ def content() -> dict:
         "formats": {"title": "Форматы"},
         "trial": {"button": "Записаться"},
         "parents": {"title": "Родителям"},
+        "no_title": {"text": "Текст без заголовка"},
     }
 
 
@@ -83,6 +84,16 @@ class TestShowContentPage:
 
         (args, kwargs) = update.message.replies[0]
         assert "Извините, раздел не найден." in args[0]
+
+    async def test_missing_title_uses_default(self, patch_pages_content):
+        update = MockUpdate()
+        context = object()
+
+        await pages.show_content_page(update, context, "no_title")
+
+        (args, kwargs) = update.message.replies[0]
+        assert "<b>Default Title</b>" in kwargs["text"]
+        assert "Текст без заголовка" in kwargs["text"]
 
 
 class TestShowMainMenu:

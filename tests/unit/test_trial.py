@@ -412,6 +412,27 @@ class TestCancel:
         assert "❌ Отменено." in _reply_text(update)
 
 
+class TestLongMessage:
+    @pytest.mark.parametrize(
+        "handler, expected_state",
+        [(get_name, NAME), (get_age, AGE), (get_goal, GOAL), (get_contact, CONTACT)],
+    )
+    async def test_rejects_too_long(self, patch_content, handler, expected_state):
+        update = MockUpdate("x" * (trial.MAX_MESSAGE_LENGTH + 1))
+        context = MockContext()
+
+        result = await handler(update, context)
+
+        assert result == expected_state
+        assert _reply_text(update) == trial.TOO_LONG_MESSAGE
+        assert context.user_data == {}
+
+    def test_length_boundary(self):
+        assert not trial._is_too_long("x" * trial.MAX_MESSAGE_LENGTH)
+        assert trial._is_too_long("x" * (trial.MAX_MESSAGE_LENGTH + 1))
+        assert not trial._is_too_long(None)
+
+
 class TestGetTrialHandler:
     def test_structure(self):
         handler = get_trial_handler("Записаться на консультацию")
