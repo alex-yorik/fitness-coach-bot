@@ -4,6 +4,7 @@ import os
 import pytest
 
 import app.content_loader as cl
+from app.validators import ContentValidationError
 
 
 @pytest.fixture
@@ -19,6 +20,9 @@ def _valid_content() -> dict:
         "name": "Тренер",
         "profession": "Фитнес",
         "welcome": {"title": "Привет", "text": "Добро пожаловать"},
+        "about": {"title": "Обо мне"},
+        "formats": {"title": "Форматы"},
+        "gallery": {"title": "Галерея"},
         "trial": {
             "button": "Записаться",
             "steps": [{"key": "name", "question": "Имя?", "validation": "text"}],
@@ -71,11 +75,12 @@ class TestLoadContent:
         with pytest.raises(json.JSONDecodeError):
             cl.load_content()
 
-    def test_validation_failure_returns_empty_dict(self, content_dir):
+    def test_validation_failure_raises(self, content_dir):
         data = _valid_content()
         data["trial"]["steps"] = [{"key": "x", "validation": "bogus", "question": "?"}]
         _write(content_dir / "fitness_coach.json", data)
-        assert cl.load_content() == {}
+        with pytest.raises(ContentValidationError):
+            cl.load_content()
 
     def test_reload_content(self, content_dir):
         _write(content_dir / "fitness_coach.json", _valid_content())

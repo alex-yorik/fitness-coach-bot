@@ -26,6 +26,9 @@ def _valid_content() -> dict:
             "cancelled": "no",
         },
         "ui": {"btn_back": "◀️ Назад", "btn_cancel": "❌ Отменить"},
+        "about": {"title": "Обо мне"},
+        "formats": {"title": "Форматы"},
+        "gallery": {"title": "Галерея"},
     }
 
 
@@ -121,6 +124,22 @@ class TestValidateAnswer:
 class TestValidateContent:
     def test_valid_content(self):
         assert validate_content(_valid_content()) is True
+
+    @pytest.mark.parametrize("page", ["about", "formats", "gallery"])
+    def test_missing_required_page(self, page):
+        data = _valid_content()
+        del data[page]
+        with pytest.raises(ContentValidationError) as exc:
+            validate_content(data)
+        assert f"Missing required section: '{page}'" in str(exc.value)
+
+    @pytest.mark.parametrize("page", ["about", "formats", "gallery"])
+    def test_required_page_missing_title(self, page):
+        data = _valid_content()
+        data[page] = {}
+        with pytest.raises(ContentValidationError) as exc:
+            validate_content(data)
+        assert f"Missing 'title' in '{page}' section" in str(exc.value)
 
     def test_missing_top_level_fields(self):
         with pytest.raises(ContentValidationError) as exc:
