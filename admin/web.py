@@ -2,8 +2,8 @@ import hmac
 import io
 import os
 import secrets
-import sqlite3
 from functools import wraps
+from urllib.parse import parse_qs, urlparse
 
 import openpyxl
 from dotenv import load_dotenv
@@ -13,6 +13,7 @@ from flask_limiter.util import get_remote_address
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from admin.passwords import verify_password
+from app.db_utils import get_connection as _create_connection
 from app.logging_config import WEB_LOG_PATH, get_logger, setup_logging
 
 ALLOWED_STATUSES = {"new", "in_progress", "done"}
@@ -56,11 +57,25 @@ def inject_demo_mode():
 
 
 def get_connection():
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-    return conn
+    return _create_connection(DATABASE_PATH)
+
+
+def _safe_referrer(default: str) -> str:
+    """Возвращает referrer, только если он принадлежит текущему домену."""
+    referrer = request.referrer
+    if referrer:
+        parsed = urlparse(referrer)
+        if parsed.scheme in ("http", "https") and parsed.netloc == request.host:
+            return referrer
+    return default
+
+
+def _referrer_status_filter() -> str:
+    referrer = _safe_referrer("")
+    if not referrer:
+        return ""
+    status = parse_qs(urlparse(referrer).query).get("status", [""])[0]
+    return status if status in ALLOWED_STATUSES else ""
 
 
 def password_matches(password: str) -> bool:
@@ -181,9 +196,7 @@ def update_status():
     new_status = request.form["status"]
     if new_status not in ALLOWED_STATUSES:
         return jsonify({"error": f"Invalid status. Allowed: {sorted(ALLOWED_STATUSES)}"}), 400
-    status_filter = (
-        request.referrer.split("status=")[-1] if "status=" in (request.referrer or "") else ""
-    )
+    status_filter = _referrer_status_filter()
     conn = get_connection()
     conn.execute("UPDATE applications SET status=? WHERE id=?", (new_status, app_id))
     conn.commit()
@@ -200,7 +213,7 @@ def delete():
     conn.execute("DELETE FROM applications WHERE id=?", (app_id,))
     conn.commit()
     conn.close()
-    return redirect(request.referrer or url_for("index"))
+    return redirect(_safe_referrer(url_for("index")))
 
 
 def sanitize_cell(value):

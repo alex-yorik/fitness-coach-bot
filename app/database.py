@@ -1,20 +1,11 @@
 import asyncio
-import os
-import sqlite3
 
 from app.config import DATABASE_PATH
+from app.db_utils import get_connection as _create_connection
 
 
 def get_connection():
-    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
-
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-
-    return conn
+    return _create_connection(DATABASE_PATH)
 
 
 def init_db():

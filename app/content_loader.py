@@ -1,5 +1,6 @@
 import json
 import logging
+from collections import OrderedDict
 from pathlib import Path
 
 from app.validators import ContentValidationError, validate_content
@@ -8,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 CONTENT_PATH = Path(__file__).parent.parent / "content"
 
-_CACHE: dict[str, tuple[float, dict]] = {}
+_CACHE: OrderedDict[str, tuple[float, dict]] = OrderedDict()
+_CACHE_MAXSIZE = 100
 
 
 def load_content(filename: str = "fitness_coach.json") -> dict:
@@ -18,8 +20,10 @@ def load_content(filename: str = "fitness_coach.json") -> dict:
         raise FileNotFoundError(f"File not found: {file_path}")
 
     mtime = file_path.stat().st_mtime
-    cached = _CACHE.get(str(file_path))
+    cache_key = str(file_path)
+    cached = _CACHE.get(cache_key)
     if cached is not None and cached[0] == mtime:
+        _CACHE.move_to_end(cache_key)
         return cached[1]
 
     with open(file_path, "r", encoding="utf-8") as f:
@@ -33,7 +37,10 @@ def load_content(filename: str = "fitness_coach.json") -> dict:
     else:
         logger.info("Content validated successfully: %s", file_path.name)
 
-    _CACHE[str(file_path)] = (mtime, data)
+    _CACHE[cache_key] = (mtime, data)
+    _CACHE.move_to_end(cache_key)
+    while len(_CACHE) > _CACHE_MAXSIZE:
+        _CACHE.popitem(last=False)
     return data
 
 
