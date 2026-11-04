@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 
 import app.database as database
@@ -93,3 +95,35 @@ class TestSaveApplication:
         assert row["contact"] == contact
         assert row["status"] == "new"
         assert row["created_at"] is not None
+
+
+class TestAsyncSave:
+    async def test_saves_application(self, db):
+        database.init_db()
+        answers = {"name": "Иван", "age": "30", "goal": "Цель", "contact": "@ivan"}
+
+        await database.save_application_async(answers)
+
+        conn = database.get_connection()
+        row = conn.execute("SELECT * FROM applications WHERE id=1").fetchone()
+        conn.close()
+        assert row["name"] == "Иван"
+        assert row["age"] == 30
+        assert row["contact"] == "@ivan"
+
+    async def test_runs_in_worker_thread(self, db, monkeypatch):
+        database.init_db()
+        main_thread = threading.get_ident()
+        called = {}
+
+        def _fake_save(answers):
+            called["thread"] = threading.get_ident()
+            called["answers"] = answers
+
+        monkeypatch.setattr(database, "save_application", _fake_save)
+        answers = {"name": "Иван", "contact": "@ivan"}
+
+        await database.save_application_async(answers)
+
+        assert called["thread"] != main_thread
+        assert called["answers"] == answers

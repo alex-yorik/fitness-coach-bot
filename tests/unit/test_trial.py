@@ -1,4 +1,5 @@
 import sqlite3
+import time
 
 import pytest
 from telegram.constants import ParseMode
@@ -70,15 +71,22 @@ def patch_content(monkeypatch, content):
 def patch_db(tmp_path, monkeypatch):
     db_path = tmp_path / "trial.db"
     monkeypatch.setattr(database, "DATABASE_PATH", str(db_path))
-
-    def _conn():
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    monkeypatch.setattr(trial, "get_connection", _conn)
     database.init_db()
     return str(db_path)
+
+
+@pytest.fixture(autouse=True)
+def reset_submission_guards():
+    trial._last_submission_at.clear()
+    trial._submitted_users.clear()
+    yield
+    trial._last_submission_at.clear()
+    trial._submitted_users.clear()
+
+
+class MockUser:
+    def __init__(self, user_id: int):
+        self.id = user_id
 
 
 class MockMessage:
@@ -91,8 +99,9 @@ class MockMessage:
 
 
 class MockUpdate:
-    def __init__(self, text=None):
+    def __init__(self, text=None, user_id=None):
         self.message = MockMessage(text)
+        self.effective_user = MockUser(user_id) if user_id is not None else None
 
 
 class MockBot:
@@ -222,6 +231,46 @@ class TestGetContact:
         assert row["contact"] == "1234567"
         assert row["status"] == "new"
 
+    async def test_rate_limits_second_submission(self, patch_content, patch_db):
+        first_update = MockUpdate("1234567", user_id=42)
+        first_context = MockContext()
+        first_context.user_data.update({"name": "Иван", "age": "30", "goal": "Похудение"})
+
+        first_result = await get_contact(first_update, first_context)
+        assert first_result == ConversationHandler.END
+
+        second_update = MockUpdate("1234567", user_id=42)
+        second_context = MockContext()
+        second_context.user_data.update({"name": "Иван", "age": "30", "goal": "Похудение"})
+
+        second_result = await get_contact(second_update, second_context)
+
+        assert second_result == CONTACT
+        assert _reply_text(second_update) == "Подождите минуту перед следующей отправкой"
+
+        conn = sqlite3.connect(patch_db)
+        count = conn.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
+        conn.close()
+        assert count == 1
+
+    async def test_duplicate_submission_blocked(self, patch_content, patch_db):
+        trial._submitted_users.add(7)
+        trial._last_submission_at[7] = time.monotonic() - trial.RATE_LIMIT_SECONDS - 1
+
+        update = MockUpdate("1234567", user_id=7)
+        context = MockContext()
+        context.user_data.update({"name": "Иван", "age": "30", "goal": "Похудение"})
+
+        result = await get_contact(update, context)
+
+        assert result == ConversationHandler.END
+        assert "Вы уже отправляли заявку" in _reply_text(update)
+
+        conn = sqlite3.connect(patch_db)
+        count = conn.execute("SELECT COUNT(*) FROM applications").fetchone()[0]
+        conn.close()
+        assert count == 0
+
     async def test_invalid(self, patch_content, patch_db):
         update = MockUpdate("ab")
         context = MockContext()
@@ -280,6 +329,31 @@ class TestSaveApplication:
         (args, kwargs) = context.bot.sent[0]
         assert kwargs["chat_id"] == "12345"
         assert "Ошибка при сохранении заявки" in kwargs["text"]
+
+    async def test_error_notifies_admin_escapes_user_data(self, patch_db, monkeypatch):
+        monkeypatch.setattr(trial, "ADMIN_CHAT_ID", "12345")
+        conn = sqlite3.connect(patch_db)
+        conn.execute("DROP TABLE applications")
+        conn.commit()
+        conn.close()
+
+        context = MockContext()
+        answers = {
+            "name": "<script>alert(1)</script>",
+            "age": "30",
+            "goal": "x&y",
+            "contact": "<b>@ivan</b>",
+        }
+
+        with pytest.raises(Exception):
+            await trial._save_application(context, answers)
+
+        (_, kwargs) = context.bot.sent[0]
+        text = kwargs["text"]
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in text
+        assert "x&amp;y" in text
+        assert "&lt;b&gt;@ivan&lt;/b&gt;" in text
+        assert "<script>" not in text
 
 
 class TestSuccessReply:

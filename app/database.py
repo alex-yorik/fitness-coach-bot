@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sqlite3
 
@@ -36,3 +37,24 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
+def save_application(answers: dict) -> None:
+    """Синхронная запись заявки. Вызывать только из рабочего потока."""
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO applications (name, age, goal, contact) VALUES (?, ?, ?, ?)",
+            (answers.get("name"), answers.get("age"), answers.get("goal"), answers.get("contact")),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+async def save_application_async(answers: dict) -> None:
+    """Асинхронная обёртка: sqlite3 не блокирует event loop бота."""
+    await asyncio.to_thread(save_application, answers)
