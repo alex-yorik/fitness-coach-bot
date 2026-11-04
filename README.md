@@ -1,284 +1,195 @@
-# 🏋️ Fitness Coach Bot
+# Fitness Coach Bot
 
 [![CI](https://github.com/alex-yorik/fitness-coach-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/alex-yorik/fitness-coach-bot/actions/workflows/ci.yml)
 [![Quality Gates](https://github.com/alex-yorik/fitness-coach-bot/actions/workflows/quality-gates.yml/badge.svg)](https://github.com/alex-yorik/fitness-coach-bot/actions/workflows/quality-gates.yml)
 
-Telegram-бот фитнес-тренера с формой записи на пробную тренировку, мини-CRM и веб-админкой.
+A Telegram fitness-coach bot with an AI coach, a conversational trial-workout booking flow, a lightweight mini-CRM for the trainer, and a secured web admin panel. The bot and the admin panel run as two services from a single Docker image and share one SQLite database.
 
-**Демо-бот в Telegram:** [@Demo_Fitness_Coach_bot](https://t.me/Demo_Fitness_Coach_bot) (прототип, не вводите реальные данные)
+**Live demo:** [@Demo_Fitness_Coach_bot](https://t.me/Demo_Fitness_Coach_bot) (prototype only, do not enter real personal data)
 
-![Приветствие бота](docs/assets/bot-chat.png)
-![Форма записи на тренировку](docs/assets/trial-form.png)
+![Bot welcome screen](docs/assets/bot-chat.png)
+![Trial workout form](docs/assets/trial-form.png)
+![Web admin panel](docs/assets/admin-filled.png)
 
-Скриншоты бота (данные вымышленные) — в папке `docs/assets/`.
+## About the Development Process
 
-## Как сделан проект
+This project was developed under the direction of its owner, who acted as the project lead and AI development orchestrator. The owner defined the requirements, system constraints, architecture-level decisions, task breakdown, and acceptance criteria; coordinated AI coding agents; reviewed their output; and directed testing, security checks, and quality improvements. AI agents assisted with code implementation, analysis, and testing under human direction. The owner remained responsible for technical decisions, validation, and final acceptance of the delivered work.
 
-Проект создан с помощью ИИ-инструментов («вайб-кодинг»): я ставлю задачи, проверяю
-поведение и принимаю решения, а код в основном генерируется ИИ. Проверки и отчёты
-в репозитории (`SECURITY.md`, `ACCEPTANCE_REPORT.md`, CI) — самопроверка с участием ИИ,
-а не независимый аудит. Проект является демонстрационным прототипом.
+## Key Features
 
-## Демо
+- **AI-powered fitness coach** with a Telegram-native conversational interface.
+- **Trial-workout booking flow** built on a multi-step `ConversationHandler` with per-step validation and back/cancel support.
+- **Mini-CRM in Telegram** with commands such as `/crm`, `/all`, and `/stats`.
+- **Web admin panel** with authentication, status filtering, record management, and Excel export.
+- **Non-blocking SQLite access** via `asyncio.to_thread`, so database work never blocks the bot event loop.
+- **Built-in rate limiting** on the admin login endpoint (`flask-limiter`, 5 POST requests per minute per IP).
+- **XSS and Open Redirect protection** with Jinja2 autoescaping and same-origin referrer validation.
+- **Fail-closed data validation** for every form answer and for application content; unknown or invalid input is rejected by default.
+- **Health checks, log rotation, and atomic SQLite backups** for reliable day-to-day operation.
 
-Админка по умолчанию доступна только локально (ADMIN_BIND=127.0.0.1) и не публикуется
-в интернет. Посмотреть проект можно так:
+## Architecture & Tech Stack
 
-- скриншоты бота ниже (данные вымышленные);
-- локальный запуск по разделу «Быстрый старт» (пароль задаёте себе сами);
-- живая демонстрация по запросу (см. docs/DEMO.md).
+- **Language:** Python 3.12
+- **Bot framework:** `python-telegram-bot` v22 (async/await)
+- **Web framework:** Flask 3 with `flask-limiter`, `Flask-Login`, and `openpyxl`
+- **Database:** SQLite in WAL mode with `busy_timeout`, shared between services
+- **Deployment:** Docker and Docker Compose
+- **Quality tooling:** pytest, pytest-asyncio, pytest-cov, ruff, Bandit, Gitleaks, pre-commit
 
-Админка работает по HTTP, на встроенном сервере Flask, и не предназначена для реальных
-клиентских данных. Для публичного доступа нужен HTTPS (через reverse proxy или туннель)
-и production-WSGI-сервер; в репозиторий они не входят.
+The system is split into two containers built from one image:
 
-### Веб-админка (только локально)
+| Service | Container | Command | Port | Purpose |
+|---|---|---|---|---|
+| Telegram bot | `fitness-coach` | `python -m app.bot` | 8001 (health) | booking flow, coach content, Telegram CRM |
+| Web admin | `fitness-coach-webadmin` | `python -m admin.web` | 5004 | application management, Excel export |
 
-Админка доступна только на сервере (`ADMIN_BIND=127.0.0.1`). Скриншоты:
+The data flow, storage model, and key architectural decisions are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-![Пустая админка с баннером DEMO](docs/assets/admin-empty.png)
+## Quality & Security
 
-![Админка с заявками](docs/assets/admin-filled.png)
+- **186+ automated tests passed** in the unit suite, with a coverage gate of at least 80% enforced in CI.
+- **Strict Bandit scanning** (`bandit -r app admin -ll`) with zero HIGH-severity findings allowed.
+- **Gitleaks secrets scanning** on every push and pull request.
+- **Pre-commit hooks** for Ruff linting, formatting, trailing whitespace, and end-of-file normalization.
+- **Modularity gate** that keeps files and functions within the project size limits.
+- **Security controls** including PBKDF2 password hashing, CSRF protection, secure session cookies, parameterized SQL queries, HTML escaping, and Excel formula-injection protection.
 
-## ✨ Особенности
+The threat model, implemented countermeasures, and known limitations are documented in [SECURITY.md](SECURITY.md).
 
-- Визитка тренера с информацией об услугах и ценах
-- Форма записи на пробную тренировку прямо в боте
-- Мини-CRM для управления заявками в Telegram
-- Веб-админка с авторизацией и выгрузкой в Excel
-- Healthcheck и ротация логов (см. `docker-compose.yml`, `app/health_server.py`)
+## Getting Started
 
-## 🚀 Быстрый старт
+### Prerequisites
 
-1. Склонировать репозиторий и скопировать шаблон окружения:
+- Docker and Docker Compose
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- Your Telegram user ID for admin notifications
 
-       cp .env.example .env
+### 1. Clone the repository
 
-2. Заполнить `.env`:
+```bash
+git clone https://github.com/alex-yorik/fitness-coach-bot.git
+cd fitness-coach-bot
+```
 
-       # Telegram
-       BOT_TOKEN=ваш_токен_от_BotFather
-       ADMIN_CHAT_ID=telegram_id_тренера
+### 2. Configure the environment
 
-       # Веб-админка
-       FLASK_USERNAME=admin
-       # хеш пароля: PBKDF2-HMAC-SHA256 (600 000 итераций)
-       FLASK_PASSWORD_HASH=<сгенерировать, см. ниже>
-       SECRET_KEY=<случайный_64-символьный_hex>
+```bash
+cp .env.example .env
+```
 
-       # True — если админка за TLS/HTTPS (fail-closed), False — только локально по HTTP
-       SESSION_COOKIE_SECURE=True
+Fill in `.env`:
 
-       # БД и логи
-       DATABASE_PATH=/app/data/database.db
-       LOG_PATH=/app/logs/bot.log
-       WEB_LOG_PATH=/app/logs/web.log
-       HEALTH_PORT=8001
+```dotenv
+# Telegram
+BOT_TOKEN=your_botfather_token
+ADMIN_CHAT_ID=your_telegram_id
 
-3. Сгенерировать хеш пароля админки (пароль хранится только в виде хеша):
+# Web admin
+FLASK_USERNAME=admin
+FLASK_PASSWORD_HASH=<generated below>
+SECRET_KEY=<random 64-character hex>
 
-       python3 -m admin.passwords
+# True when the admin panel is served over HTTPS (fail-closed)
+SESSION_COOKIE_SECURE=True
 
-   Пример вывода:
+# Database and logs
+DATABASE_PATH=/app/data/database.db
+LOG_PATH=/app/logs/bot.log
+WEB_LOG_PATH=/app/logs/web.log
+HEALTH_PORT=8001
+```
 
-       FLASK_PASSWORD_HASH=pbkdf2_sha256:600000:<salt_hex>:<hash_hex>
+Generate the admin password hash:
 
-   Вывод записать в `FLASK_PASSWORD_HASH`.
+```bash
+python3 -m admin.passwords
+```
 
-4. Подготовить каталоги для данных и выдать их пользователю контейнера (uid 10001):
+Copy the resulting `FLASK_PASSWORD_HASH=pbkdf2_sha256:...` value into `.env`.
 
-       mkdir -p data logs media
-       sudo chown -R 10001:10001 data logs media
+### 3. Prepare data directories
 
-5. Запустить:
+The container runs as the unprivileged user `appuser` (uid 10001):
 
-       docker-compose up -d --build
+```bash
+mkdir -p data logs media
+sudo chown -R 10001:10001 data logs media
+```
 
-6. Проверить статус и health:
+### 4. Start the services
 
-       docker-compose ps
-       curl -f http://localhost:8001/healthz   # бот: 200 ok
-       curl -f http://localhost:5004/healthz   # админка: 200 ok
+```bash
+docker-compose up -d --build
+```
 
-Локально админка открывается на `http://localhost:5004`.
+### 5. Verify health
 
-⚠️ `ADMIN_BIND=0.0.0.0` открывает админку всей сети; включайте только для изолированного
-демо с вымышленными данными и предпочтительно за HTTPS.
+```bash
+docker-compose ps
+curl -f http://localhost:8001/healthz   # bot
+curl -f http://localhost:5004/healthz   # admin panel
+```
 
-## 📁 Структура проекта
+The admin panel is available locally at `http://localhost:5004`. By default it binds to `127.0.0.1` and is not exposed to the internet.
 
-    FitnessCoach/
-    ├── app/
-    │   ├── bot.py              # точка входа бота, регистрация хендлеров
-    │   ├── config.py           # конфигурация из .env
-    │   ├── database.py         # SQLite (WAL), init_db
-    │   ├── keyboards.py
-    │   ├── content_loader.py   # загрузка/валидация JSON-контента
-    │   ├── validators.py       # валидация контента и ответов формы
-    │   ├── logging_config.py   # ротация логов (10 МБ × 5)
-    │   ├── health_server.py    # GET /healthz (порт 8001)
-    │   └── handlers/
-    │       ├── start.py
-    │       ├── pages.py
-    │       └── trial.py        # форма записи (ConversationHandler)
-    ├── admin/
-    │   ├── web.py              # Flask-админка (порт 5004)
-    │   └── templates/
-    ├── content/
-    │   └── fitness_coach.json
-    ├── scripts/
-    │   ├── backup.sh           # атомарный бэкап SQLite (ротация 14 дней)
-    │   └── check_modularity.py # гейт: файл ≤500, функция ≤50 строк
-    ├── tests/
-    │   ├── conftest.py
-    │   ├── unit/               # unit-тесты (валидаторы, БД, хендлеры, web, ...)
-    │   └── live/               # live-тесты Telegram API (@pytest.mark.live)
-    ├── .env.example
-    ├── docker-compose.yml
-    ├── Dockerfile
-    ├── ARCHITECTURE.md         # поток данных, хранилище, ключевые решения
-    ├── SECURITY.md             # модель угроз и контрмеры
-    ├── TECH_DEBT.md            # технические долги
-    ├── CHANGELOG.md            # git-cliff из conventional commits
-    ├── docs/
-    │   ├── DEMO.md             # как показать демо без открытого порта
-    │   └── assets/             # скриншоты бота и админки
-    ├── ACCEPTANCE_REPORT.md    # историческая запись приёмки (ИИ-самопроверка)
-    └── cliff.toml
+## Telegram CRM Commands
 
-## 🌐 Веб-админка
-
-Локально доступна по адресу: **http://localhost:5004**
-
-⚠️ **Доступ только с сервера.** Админка слушает только localhost (`ADMIN_BIND=127.0.0.1`).
-Публичный доступ закрыт в целях безопасности. Для удалённого доступа необходим
-HTTPS (reverse proxy или туннель); см. docs/DEMO.md.
-
-Логин и пароль задаются в `.env` (логин `FLASK_USERNAME`, пароль — только в виде хеша
-`FLASK_PASSWORD_HASH`).
-
-Возможности:
-- Просмотр всех заявок
-- Фильтрация по статусам (новые / в работе / завершённые)
-- Смена статусов и удаление
-- Выгрузка в Excel
-
-## 🤖 CRM команды в Telegram
-
-| Команда | Описание |
+| Command | Description |
 |---|---|
-| /crm | Новые заявки |
-| /all | Все заявки |
-| /all new | Только новые |
-| /all in_progress | В работе |
-| /all done | Завершённые |
-| /stats | Статистика |
+| `/crm` | Show new applications |
+| `/all` | Show all applications |
+| `/all new` | Show only new applications |
+| `/all in_progress` | Show applications in progress |
+| `/all done` | Show completed applications |
+| `/stats` | Show summary statistics |
 
-## 📊 Статусы заявок
+## Project Structure
 
-| Статус | Значение |
-|---|---|
-| new | 🆕 Новая заявка |
-| in_progress | ⏳ В работе |
-| done | ✅ Завершена |
+```text
+.
+├── app/
+│   ├── bot.py              # entry point and handler registration
+│   ├── config.py           # environment configuration
+│   ├── database.py         # async SQLite access (WAL)
+│   ├── content_loader.py   # cached JSON content loading
+│   ├── validators.py       # fail-closed input validation
+│   ├── health_server.py    # GET /healthz
+│   └── handlers/           # start, pages, trial booking flow
+├── admin/
+│   ├── web.py              # Flask admin panel
+│   └── templates/
+├── content/                # bot texts and configuration
+├── tests/
+│   ├── unit/               # unit and integration tests
+│   └── live/               # optional Telegram API tests
+├── scripts/                # backup and modularity checks
+├── docker-compose.yml
+├── Dockerfile
+├── ARCHITECTURE.md
+├── SECURITY.md
+└── TECH_DEBT.md
+```
 
-## 🧪 Тесты
+## Testing
 
-Тесты: 10 test files, 116 test functions; последний полный прогон: 159 passed, 0 failed, покрытие 92.98% (пакеты app/ и admin/; гейт ≥ 80% в CI); подтверждено повторным прогоном 2026-10-29.
+Run the unit suite locally:
 
-    # Быстрый прогон (unit-тесты, без сети)
-    python -m pytest tests/unit -m "not live"
+```bash
+python -m pytest tests/unit -m "not live"
+```
 
-    # С coverage-гейтом (>=80%)
-    python -m pytest tests/unit -m "not live" --cov --cov-fail-under=80
+Run the suite with the coverage gate:
 
-Live-тесты, требующие реальный Telegram API, помечены `@pytest.mark.live`
-и по умолчанию пропускаются. Запуск только вручную:
+```bash
+python -m pytest tests/unit -m "not live" --cov --cov-fail-under=80
+```
 
-    RUN_LIVE_TESTS=1 python -m pytest -m live
+Live tests that require the real Telegram API are marked with `@pytest.mark.live` and are skipped by default:
 
-## 🤖 CI/CD
+```bash
+RUN_LIVE_TESTS=1 python -m pytest -m live
+```
 
-Проверки качества автоматически запускаются на каждый push/PR в `main`
-(GitHub Actions, Python 3.12, < 5 мин):
+## License
 
-| Workflow | Что проверяет |
-|---|---|
-| `ci.yml` | ruff check + format, py_compile всех файлов, unit-тесты, docker build |
-| `quality-gates.yml` | bandit (`-ll`, 0 HIGH), secrets-скан (gitleaks), coverage ≥ 80%, модульность (`scripts/check_modularity.py`) |
-
-В CI запускаются только unit-тесты (`-m "not live"`), live-тесты — никогда.
-
-Рекомендуется включить branch protection для `main` с required checks.
-Фактические имена проверок (выбирать из выпадающего списка):
-- CI: `Lint, compile and unit tests`, `Docker build`
-- Quality Gates: `Bandit + secrets scan`, `Coverage gate >= 80%`, `Modularity gate`
-
-В ruleset галочка «Restrict updates» должна быть выключена.
-
-### 📝 Changelog
-
-`CHANGELOG.md` генерируется из conventional commits через `git-cliff`
-(конфиг `cliff.toml`, разделы Added/Changed/Fixed/Security). Регенерировать:
-
-    git-cliff -o CHANGELOG.md
-
-## 🛠 Docker команды
-
-    # Статус контейнеров
-    docker-compose ps
-
-    # Логи бота
-    docker logs fitness-coach --tail=30
-
-    # Логи веб-админки
-    docker logs fitness-coach-webadmin --tail=30
-
-    # Перезапуск
-    docker-compose restart fitness-coach
-
-    # Пересборка после изменений
-    docker-compose up -d --build
-
-### Healthcheck
-
-Оба сервиса имеют `healthcheck` в `docker-compose.yml` (curl на `/healthz`,
-интервал 300s, start_period 15s). Health-эндпоинты проверяют доступность БД:
-
-- бот: `http://localhost:8001/healthz`
-- админка: `http://localhost:5004/healthz`
-
-По умолчанию админка закрыта (`127.0.0.1`); `ADMIN_BIND=0.0.0.0` открывает её
-всей сети: только для изолированного демо с вымышленными данными, см.
-`docs/DEMO.md`.
-
-## 📝 Обновление контента
-
-    nano content/fitness_coach.json
-    docker-compose restart fitness-coach
-
-## 🔧 Стек
-
-- Python 3.12
-- python-telegram-bot
-- SQLite (WAL)
-- Flask + flask-limiter
-- openpyxl
-- Docker + Docker Compose
-- git-cliff (changelog)
-
-## ℹ️ Быстрая справка
-
-| Параметр | Значение |
-|---|---|
-| 📦 Контейнер бота | `fitness-coach` |
-| 🌐 Контейнер админки | `fitness-coach-webadmin` |
-| 🔌 Порт админки | **5004** |
-| ❤️ Health-порт бота | **8001** |
-| 👤 Логин | `admin` (из `.env`) |
-| 🔑 Пароль | хеш (см. `FLASK_PASSWORD_HASH`) |
-| 🗄 БД | `/app/data/database.db` (volume `./data`) |
-
-## 📄 Лицензия
-
-All rights reserved. Проект опубликован для портфолио и оценки; условия использования — в файле [LICENSE](LICENSE).
+All rights reserved. This project is published for portfolio review and evaluation; see [LICENSE](LICENSE) for details.
