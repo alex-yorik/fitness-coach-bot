@@ -3,6 +3,7 @@ import logging
 from telegram.ext import Application
 
 import app.bot as bot
+from app.validators import ContentValidationError
 
 
 def _content() -> dict:
@@ -27,6 +28,24 @@ class TestMain:
 
         assert calls == ["init"]
         assert any("BOT_TOKEN" in record.message for record in caplog.records)
+
+    def test_invalid_content_fails_fast(self, monkeypatch, caplog):
+        calls = []
+        monkeypatch.setattr(bot, "BOT_TOKEN", "123:test-token")
+        monkeypatch.setattr(bot, "init_db", lambda: calls.append("init"))
+        monkeypatch.setattr(bot, "setup_logging", lambda *args, **kwargs: None)
+        monkeypatch.setattr(bot, "start_health_server", lambda: calls.append("health"))
+
+        def _boom():
+            raise ContentValidationError("bad content")
+
+        monkeypatch.setattr(bot, "load_content", _boom)
+
+        with caplog.at_level(logging.ERROR):
+            bot.main()
+
+        assert "health" not in calls
+        assert any("контент" in record.message for record in caplog.records)
 
     def test_registers_handlers_and_runs(self, monkeypatch):
         calls = []

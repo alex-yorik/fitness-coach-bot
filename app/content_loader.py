@@ -28,8 +28,8 @@ def load_content(filename: str = "fitness_coach.json") -> dict:
     try:
         validate_content(data)
     except ContentValidationError as e:
-        logger.warning("Content validation failed: %s", e)
-        data = {}
+        logger.error("Content validation failed: %s", e)
+        raise
     else:
         logger.info("Content validated successfully: %s", file_path.name)
 

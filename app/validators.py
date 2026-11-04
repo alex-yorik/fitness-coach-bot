@@ -78,9 +78,19 @@ def _check_ui(data: Dict[str, Any], errors: list) -> None:
             errors.append("Missing 'btn_cancel' in 'ui' section")
 
 
+def _check_required_pages(data: Dict[str, Any], errors: list) -> None:
+    """Проверяет страницы, которые бот регистрирует напрямую (bot.py)."""
+    for page in ("about", "formats", "gallery"):
+        section = data.get(page)
+        if not isinstance(section, dict):
+            errors.append(f"Missing required section: '{page}'")
+        elif "title" not in section:
+            errors.append(f"Missing 'title' in '{page}' section")
+
+
 def _check_media_sections(data: Dict[str, Any], errors: list) -> None:
-    """Проверяет медиа-секции about/formats/parents/services/portfolio."""
-    optional_sections = ["about", "formats", "parents", "services", "portfolio"]
+    """Проверяет медиа-секции about/formats/gallery/parents/services/portfolio."""
+    optional_sections = ["about", "formats", "gallery", "parents", "services", "portfolio"]
     for section in optional_sections:
         if section in data:
             section_data = data[section]
@@ -122,6 +132,7 @@ def validate_content(data: Dict[str, Any]) -> bool:
     _check_welcome(data, errors)
     _check_trial(data, errors)
     _check_ui(data, errors)
+    _check_required_pages(data, errors)
     _check_media_sections(data, errors)
     _check_field_types(data, errors)
 

@@ -10,6 +10,7 @@ from app.handlers.start import start
 from app.handlers.trial import get_trial_handler
 from app.health_server import start_health_server
 from app.logging_config import get_logger, setup_logging
+from app.validators import ContentValidationError
 
 logger = get_logger(__name__)
 
@@ -22,9 +23,14 @@ def main():
         logger.error("BOT_TOKEN не найден в .env")
         return
 
+    try:
+        data = load_content()
+    except (ContentValidationError, FileNotFoundError) as e:
+        logger.error("Не удалось загрузить контент: %s", e)
+        return
+
     start_health_server()
 
-    data = load_content()
     trial_button = data["trial"]["button"]
 
     app = Application.builder().token(BOT_TOKEN).build()
