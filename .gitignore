@@ -18,3 +18,6 @@ backups/
 .coverage
 logs/
 .opencode/
+
+# Private AI agent instructions
+/AGENTS.md
