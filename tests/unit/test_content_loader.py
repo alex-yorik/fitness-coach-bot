@@ -66,6 +66,17 @@ class TestLoadContent:
         assert second["name"] == "Тренер 2"
         assert first is not second
 
+    def test_cache_evicts_oldest_entries(self, content_dir, monkeypatch):
+        monkeypatch.setattr(cl, "_CACHE_MAXSIZE", 2)
+        for name in ("a.json", "b.json", "c.json"):
+            _write(content_dir / name, _valid_content())
+            cl.load_content(name)
+
+        assert len(cl._CACHE) == 2
+        assert str(content_dir / "a.json") not in cl._CACHE
+        assert str(content_dir / "b.json") in cl._CACHE
+        assert str(content_dir / "c.json") in cl._CACHE
+
     def test_file_not_found(self, content_dir):
         with pytest.raises(FileNotFoundError):
             cl.load_content("missing.json")

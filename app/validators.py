@@ -3,7 +3,10 @@ Validator for checking content.json structure
 """
 
 import json
+import logging
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 class ContentValidationError(Exception):
@@ -252,4 +255,5 @@ def validate_answer(validation_type: str, value: str):
             return True, None
         return False, "contact_format"
 
-    return True, None
+    logger.warning("Unknown validation type: %r", validation_type)
+    return False, "unknown_validation_type"

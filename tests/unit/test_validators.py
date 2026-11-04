@@ -117,8 +117,14 @@ class TestValidateAnswer:
     def test_contact(self, value, expected):
         assert validate_answer("contact", value) == expected
 
-    def test_unknown_validation_type(self):
-        assert validate_answer("unknown_type", "anything") == (True, None)
+    @pytest.mark.parametrize("validation_type", ["unknown_type", "bogus", ""])
+    def test_unknown_validation_type_fails_closed(self, validation_type, caplog):
+        with caplog.at_level("WARNING"):
+            assert validate_answer(validation_type, "anything") == (
+                False,
+                "unknown_validation_type",
+            )
+        assert "Unknown validation type" in caplog.text
 
 
 class TestValidateContent:

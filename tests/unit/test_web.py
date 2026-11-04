@@ -223,6 +223,61 @@ class TestAuthenticated:
             assert saved == status
 
 
+class TestSafeRedirect:
+    def _login_and_csrf(self, client):
+        _login(client)
+        row_id = _insert(client)
+        client.get("/")
+        return row_id, _csrf(client)
+
+    def test_delete_external_referrer_redirects_home(self, client):
+        row_id, csrf = self._login_and_csrf(client)
+
+        resp = client.post(
+            "/delete",
+            data={"id": row_id, "csrf_token": csrf},
+            headers={"Referer": "https://evil.example/phish"},
+        )
+
+        assert resp.status_code == 302
+        assert "evil.example" not in resp.headers["Location"]
+        assert resp.headers["Location"].endswith("/")
+
+    def test_delete_missing_referrer_redirects_home(self, client):
+        row_id, csrf = self._login_and_csrf(client)
+
+        resp = client.post("/delete", data={"id": row_id, "csrf_token": csrf})
+
+        assert resp.status_code == 302
+        assert resp.headers["Location"].endswith("/")
+
+    def test_delete_same_origin_referrer_preserved(self, client):
+        row_id, csrf = self._login_and_csrf(client)
+        referrer = "http://localhost/export"
+
+        resp = client.post(
+            "/delete",
+            data={"id": row_id, "csrf_token": csrf},
+            headers={"Referer": referrer},
+        )
+
+        assert resp.status_code == 302
+        assert resp.headers["Location"] == referrer
+
+    def test_update_status_external_referrer_ignored(self, client):
+        row_id, csrf = self._login_and_csrf(client)
+
+        resp = client.post(
+            "/update_status",
+            data={"id": row_id, "status": "done", "csrf_token": csrf},
+            headers={"Referer": "https://evil.example/?status=done"},
+        )
+
+        assert resp.status_code == 302
+        assert "evil.example" not in resp.headers["Location"]
+        assert "status=done" not in resp.headers["Location"]
+
+
 class TestDemoBanner:
     def test_demo_banner_login(self, client, monkeypatch):
         monkeypatch.setattr(web, "DEMO_MODE", True)
