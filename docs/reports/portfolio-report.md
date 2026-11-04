@@ -451,18 +451,22 @@
 
 | Метрика | Baseline (F0.2, 1830c7a) | Итог (F8.3, этот коммит) |
 |---|---|---|
-| pytest: passed / failed | 148 / 0 | 159 / 0 |
-| coverage | 95.76% | 95.76% |
+| pytest: passed / failed | 148 / 0 | 186 / 0 |
+| coverage | 95.76% | 93.67% |
 | ruff check, ошибок | 0 | 0 |
 | bandit findings (-ll) | 0 | 0 (+ 2 существующих nosec B104 — оба до hardening) |
 | тест-файлов | 10 | 10 |
-| тест-функций | 106 | 116 |
+| тест-функций | 106 | 134 |
 | модулярность, файлов | 27 | 27 (промежуточно F1/F3 — 25) |
 
 Примечания к подсчёту:
 - Команды те же, что в F0.2: `pytest tests/unit -m "not live" --cov --cov-fail-under=80`, `ruff check .`, `ruff format --check .`, `bandit -r app admin -ll -q`, `python scripts/check_modularity.py .`.
-- Тест-файлы/функции, baseline: `find tests -name "test_*.py" | wc -l` → 10 и `grep -rhE "^\s*(async )?def test_" tests | wc -l` → 106 — по всем `tests` (9 unit-файлов / 105 функций + 1 live-файл / 1 функция). Итог: по `tests/unit`, как в README (F7), — 10 файлов / 116 функций; с учётом `tests/live/test_live.py` — 11 файлов / 117 функций. Прирост unit-функций: +4 (F3) и +7 (F4, новый файл `test_passwords.py`); live-тест в unit-прогон не входит (`-m "not live"`).
+- Тест-файлы/функции, baseline: `find tests -name "test_*.py" | wc -l` → 10 и `grep -rhE "^\s*(async )?def test_" tests | wc -l` → 106 — по всем `tests` (9 unit-файлов / 105 функций + 1 live-файл / 1 функция). Итог: по `tests/unit`, как в README (F7), — 10 файлов / 134 функций (актуально на 2026-11-04; на момент F7 было 116); с учётом `tests/live/test_live.py` — 11 файлов / 135 функций. Прирост unit-функций: +4 (F3) и +7 (F4, новый файл `test_passwords.py`); live-тест в unit-прогон не входит (`-m "not live"`).
 - Модулярность: скрипт считает все `.py` вне SKIP_DIRS (app, admin, scripts, tests). F0.2 — 27; F1 — 25 (удалены `ai_assistant.py` и `admin/admin.py`); с F4 — 27 (добавлены `admin/passwords.py` и `tests/unit/test_passwords.py`); финал — 27.
+- Сравнение coverage: старые `95.76%` измерялись только для `app/`; новые `93.67%` — для `app/` + `admin/` (после H1). Это разные области измерения, поэтому прямое сравнение процентов некорректно.
+- Тест-функции: фактическое число на 2026-11-04 — **134** (`grep -r "def test_" tests/unit | wc -l`), ранее в отчёте значилось 116.
+
+Metrics collected via pytest on 2026-11-04 at commit 8b3b819.
 
 ### NOT VERIFIED / N/A (выносится в PR)
 
@@ -716,7 +720,7 @@ README обновлён на 92.98% с явным указанием пакет�
 
 | Блок | Статус | Доказательство |
 |---|---|---|
-| H1 — admin/ в покрытии | VERIFIED | `source = ["app", "admin"]`; pytest: 159 passed, TOTAL 92.98% (гейт ≥ 80%) |
+| H1 — admin/ в покрытии | VERIFIED | `source = ["app", "admin"]`; pytest: 186 passed, TOTAL 93.67% (гейт ≥ 80%; замер 2026-11-04, commit 8b3b819) |
 | H2 — запрет туннеля к рабочей админке | VERIFIED | `docs/DEMO.md` (способы 1–3, «Чего не делать»), `TECH_DEBT.md` (запись 2026-10-29) |
 | H3 — единые формулировки | VERIFIED | grep `reverse-proxy с TLS` / `явно установите .ADMIN_BIND=0.0.0.0` → пусто; README/SECURITY/TECH_DEBT/.env.example |
 | H4 — скрытие пароля и путей | VERIFIED | grep `G5-Demo-Pass` / `/opt/fitness-coach` → пусто; `<test-password>`, `<repo-dir>`, `<tmp>/` |
@@ -754,9 +758,9 @@ $ docker build -t fitness-coach:ci .                 → Successfully tagged fit
 
 | Было | Стало |
 |---|---|
-| покрытие 95.76% (`app/`) | покрытие 92.98% (`app/` + `admin/`; гейт ≥ 80% в CI) |
-| 159 passed / 0 failed | без изменений |
-| 10 test files / 116 test functions | без изменений |
+| покрытие 95.76% (`app/`) | покрытие 93.67% (`app/` + `admin/`; гейт ≥ 80% в CI) |
+| 159 passed / 0 failed | 186 passed / 0 failed |
+| 10 test files / 116 test functions | 10 test files / 134 test functions |
 
 ### Отклонения от ТЗ (owner-approved)
 
