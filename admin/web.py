@@ -192,7 +192,9 @@ def index():
 @login_required
 @csrf_required
 def update_status():
-    app_id = request.form["id"]
+    app_id = request.form.get("id")
+    if app_id is None:
+        return jsonify({"error": "Missing id"}), 400
     new_status = request.form["status"]
     if new_status not in ALLOWED_STATUSES:
         return jsonify({"error": f"Invalid status. Allowed: {sorted(ALLOWED_STATUSES)}"}), 400
@@ -208,7 +210,9 @@ def update_status():
 @login_required
 @csrf_required
 def delete():
-    app_id = request.form["id"]
+    app_id = request.form.get("id")
+    if app_id is None:
+        return jsonify({"error": "Missing id"}), 400
     conn = get_connection()
     conn.execute("DELETE FROM applications WHERE id=?", (app_id,))
     conn.commit()

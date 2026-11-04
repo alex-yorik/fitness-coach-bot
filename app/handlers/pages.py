@@ -14,11 +14,8 @@ async def show_content_page(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await update.message.reply_text("Извините, раздел не найден.")
         return
 
-    text = (
-        f"<b>{section['title']}</b>\n\n{section['text']}"
-        if "text" in section
-        else f"<b>{section['title']}</b>"
-    )
+    title = section.get("title", "Default Title")
+    text = f"<b>{title}</b>\n\n{section['text']}" if "text" in section else f"<b>{title}</b>"
 
     await update.message.reply_text(
         text=text, parse_mode=ParseMode.HTML, reply_markup=main_keyboard()
