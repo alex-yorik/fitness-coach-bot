@@ -21,8 +21,9 @@ This project was developed under the direction of its owner, who acted as the pr
 - **Trial-workout booking flow** built on a multi-step `ConversationHandler` with per-step validation and back/cancel support.
 - **Mini-CRM in Telegram** with commands such as `/crm`, `/all`, and `/stats`.
 - **Web admin panel** with authentication, status filtering, record management, and Excel export.
-- **Non-blocking SQLite access** via `asyncio.to_thread`, so database work never blocks the bot event loop.
+- **Non-blocking application writes:** SQLite application-saving operations run through `asyncio.to_thread`, keeping synchronous database writes off the bot's event loop.
 - **Built-in rate limiting** on the admin login endpoint (`flask-limiter`, 5 POST requests per minute per IP).
+- Telegram trial submission: 60-second cooldown and duplicate-submission restriction.
 - **XSS and Open Redirect protection** with Jinja2 autoescaping and same-origin referrer validation.
 - **Fail-closed data validation** for every form answer and for application content; unknown or invalid input is rejected by default.
 - **Health checks, log rotation, and atomic SQLite backups** for reliable day-to-day operation.

@@ -81,6 +81,7 @@
 
 - Валидация ввода на каждом шаге формы (`validate_answer`): возраст — число
   1–100, контакт — телефон/@username, тексты — длиной 2–200 символов.
+- Telegram trial submission: 60-second cooldown and duplicate-submission restriction.
 - Уведомления администратору и success-сообщение экранируют ввод пользователя.
 
 ### Docker
