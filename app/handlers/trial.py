@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 NAME, AGE, GOAL, CONTACT = range(4)
 
 RATE_LIMIT_SECONDS = 60.0
+MAX_MESSAGE_LENGTH = 4000
+TOO_LONG_MESSAGE = "Сообщение слишком длинное"
 _last_submission_at: dict[int, float] = {}
 _submitted_users: set[int] = set()
 
@@ -50,6 +52,17 @@ def _submission_block(user_id: int | None) -> tuple[str, bool] | None:
         return "Вы уже отправляли заявку. Повторная отправка недоступна.", True
 
     return None
+
+
+def _is_too_long(text: str | None) -> bool:
+    return bool(text) and len(text) > MAX_MESSAGE_LENGTH
+
+
+async def _reject_if_too_long(update: Update) -> bool:
+    if not _is_too_long(update.message.text):
+        return False
+    await update.message.reply_text(TOO_LONG_MESSAGE, reply_markup=back_keyboard())
+    return True
 
 
 def _answers_summary(answers: dict) -> str:
@@ -102,6 +115,8 @@ async def trial_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await _reject_if_too_long(update):
+        return NAME
     step = _trial_step(0)
     ok, _ = validate_answer(step.get("validation", "text"), update.message.text)
     if not ok:
@@ -118,6 +133,8 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await _reject_if_too_long(update):
+        return AGE
     step = _trial_step(1)
     ok, _ = validate_answer(step.get("validation", "age"), update.message.text)
     if not ok:
@@ -134,6 +151,8 @@ async def get_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await _reject_if_too_long(update):
+        return GOAL
     step = _trial_step(2)
     ok, _ = validate_answer(step.get("validation", "text"), update.message.text)
     if not ok:
@@ -183,6 +202,8 @@ async def _success_reply(update: Update, answers: dict) -> None:
 
 
 async def get_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await _reject_if_too_long(update):
+        return CONTACT
     user_id = _user_id(update)
     block = _submission_block(user_id)
     if block is not None:

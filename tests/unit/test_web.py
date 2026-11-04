@@ -223,6 +223,29 @@ class TestAuthenticated:
             assert saved == status
 
 
+class TestMissingFormFields:
+    def _csrf_ready_client(self, client):
+        _login(client)
+        client.get("/")
+        return _csrf(client)
+
+    def test_update_status_without_id(self, client):
+        csrf = self._csrf_ready_client(client)
+
+        resp = client.post("/update_status", data={"status": "done", "csrf_token": csrf})
+
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "Missing id"
+
+    def test_delete_without_id(self, client):
+        csrf = self._csrf_ready_client(client)
+
+        resp = client.post("/delete", data={"csrf_token": csrf})
+
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "Missing id"
+
+
 class TestSafeRedirect:
     def _login_and_csrf(self, client):
         _login(client)
