@@ -18,3 +18,4 @@ backups/
 .coverage
 logs/
 .opencode/
+.env.backup-*
