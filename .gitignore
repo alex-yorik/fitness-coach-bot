@@ -19,3 +19,6 @@ backups/
 logs/
 .opencode/
 .env.backup-*
+
+# Private AI agent instructions
+/AGENTS.md
