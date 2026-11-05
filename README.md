@@ -48,7 +48,7 @@ The data flow, storage model, and key architectural decisions are documented in 
 
 ## Quality & Security
 
-- **186 passed, 93.67% coverage** as of 2026-11-04 (SHA: 8b3b819) in the unit suite, with a coverage gate of at least 80% enforced in CI.
+- **186 passed, 93.67% coverage** as of 2026-11-05 (SHA: a1a8f2a) in the unit suite, with a coverage gate of at least 80% enforced in CI.
 - **Strict Bandit scanning** (`bandit -r app admin -ll`) with zero HIGH-severity findings allowed.
 - **Gitleaks secrets scanning** on every push and pull request.
 - **Pre-commit hooks** for Ruff linting, formatting, trailing whitespace, and end-of-file normalization.

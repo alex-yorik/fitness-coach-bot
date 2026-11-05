@@ -466,7 +466,7 @@
 - Сравнение coverage: старые `95.76%` измерялись только для `app/`; новые `93.67%` — для `app/` + `admin/` (после H1). Это разные области измерения, поэтому прямое сравнение процентов некорректно.
 - Тест-функции: фактическое число на 2026-11-04 — **134** (`grep -r "def test_" tests/unit | wc -l`), ранее в отчёте значилось 116.
 
-Metrics collected via pytest on 2026-11-04 at commit 8b3b819.
+Metrics collected via pytest on 2026-11-05 at commit a1a8f2a.
 
 ### NOT VERIFIED / N/A (выносится в PR)
 
@@ -720,7 +720,7 @@ README обновлён на 92.98% с явным указанием пакет�
 
 | Блок | Статус | Доказательство |
 |---|---|---|
-| H1 — admin/ в покрытии | VERIFIED | `source = ["app", "admin"]`; pytest: 186 passed, TOTAL 93.67% (гейт ≥ 80%; замер 2026-11-04, commit 8b3b819) |
+| H1 — admin/ в покрытии | VERIFIED | `source = ["app", "admin"]`; pytest: 186 passed, TOTAL 93.67% (гейт ≥ 80%; замер 2026-11-05, commit a1a8f2a) |
 | H2 — запрет туннеля к рабочей админке | VERIFIED | `docs/DEMO.md` (способы 1–3, «Чего не делать»), `TECH_DEBT.md` (запись 2026-10-29) |
 | H3 — единые формулировки | VERIFIED | grep `reverse-proxy с TLS` / `явно установите .ADMIN_BIND=0.0.0.0` → пусто; README/SECURITY/TECH_DEBT/.env.example |
 | H4 — скрытие пароля и путей | VERIFIED | grep `G5-Demo-Pass` / `/opt/fitness-coach` → пусто; `<test-password>`, `<repo-dir>`, `<tmp>/` |
