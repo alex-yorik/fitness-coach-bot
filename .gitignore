@@ -17,7 +17,10 @@ backups/
 .ruff_cache/
 .coverage
 logs/
-.opencode/
+.opencode/*
+!.opencode/plugins/
+.opencode/plugins/*
+!.opencode/plugins/graphify.js
 .env.backup-*
 
 # Private AI agent instructions
